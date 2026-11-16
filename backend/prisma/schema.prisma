@@ -1,0 +1,39 @@
+// ReadySet database schema (Day 2: users + preferences only).
+// Event, checklist and notification models are added in later phases.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String          @id @default(uuid()) @db.Uuid
+  name         String          @db.VarChar(100)
+  email        String          @unique @db.VarChar(254)
+  passwordHash String          @map("password_hash")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  preference   UserPreference?
+
+  @@map("users")
+}
+
+model UserPreference {
+  id                          String   @id @default(uuid()) @db.Uuid
+  userId                      String   @unique @map("user_id") @db.Uuid
+  defaultPreparationMinutes   Int      @default(30) @map("default_preparation_minutes")
+  defaultArrivalBufferMinutes Int      @default(10) @map("default_arrival_buffer_minutes")
+  preferredTravelMode         String   @default("manual") @map("preferred_travel_mode") @db.VarChar(20)
+  timezone                    String   @default("Asia/Dhaka") @db.VarChar(64)
+  createdAt                   DateTime @default(now()) @map("created_at")
+  updatedAt                   DateTime @updatedAt @map("updated_at")
+
+  // Deleting a user removes their preference row (no orphans).
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
