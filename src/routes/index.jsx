@@ -6,6 +6,8 @@ import RegisterPage from '@/pages/auth/RegisterPage'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
 import SchedulePage from '@/pages/schedule/SchedulePage'
 import CreateEventPage from '@/pages/events/CreateEventPage'
+import EditEventPage from '@/pages/events/EditEventPage'
+import EventDetailPage from '@/pages/events/EventDetailPage'
 import ChecklistPage from '@/pages/checklist/ChecklistPage'
 import PlannerPage from '@/pages/planner/PlannerPage'
 import NotificationsPage from '@/pages/notifications/NotificationsPage'
@@ -23,6 +25,8 @@ export default function AppRoutes() {
           <Route index element={<DashboardPage />} />
           <Route path="schedule" element={<SchedulePage />} />
           <Route path="events/new" element={<CreateEventPage />} />
+          <Route path="events/:id" element={<EventDetailPage />} />
+          <Route path="events/:id/edit" element={<EditEventPage />} />
           <Route path="checklist" element={<ChecklistPage />} />
           <Route path="planner" element={<PlannerPage />} />
           <Route path="notifications" element={<NotificationsPage />} />

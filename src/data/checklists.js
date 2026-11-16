@@ -1,4 +1,4 @@
-// MOCK DATA — checklist templates and per-event starting checklists.
+// Checklist templates (static content). Per-event checklists are temporary client state for now.
 export const CHECKLIST_GROUPS = ['Essentials', 'Documents', 'Electronics', 'Personal']
 
 export const checklistTemplates = {
@@ -53,12 +53,3 @@ export const makeItem = (text, group = 'Essentials', done = false) => ({
 
 export const itemsFromTemplate = (key) =>
   (checklistTemplates[key]?.items ?? []).map((i) => makeItem(i.text, i.group))
-
-// Initial checklists keyed by event id.
-export const mockChecklists = {
-  'evt-1': itemsFromTemplate('university').map((item, i) => ({ ...item, done: i < 3 })),
-  'evt-2': itemsFromTemplate('office').map((item, i) => ({ ...item, done: i < 1 })),
-  'evt-3': itemsFromTemplate('appointment'),
-  'evt-4': itemsFromTemplate('university').map((item, i) => ({ ...item, done: i < 2 })),
-  'evt-5': itemsFromTemplate('travel').map((item, i) => ({ ...item, done: i < 2 })),
-}

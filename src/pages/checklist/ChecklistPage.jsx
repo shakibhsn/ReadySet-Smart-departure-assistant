@@ -13,7 +13,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAppState } from '@/hooks/useAppState'
 import { CHECKLIST_GROUPS, checklistTemplates } from '@/data/checklists'
 import { formatDayLabel, formatTime12 } from '@/utils/format'
-import { getNextEvent, getProgress, sortEvents } from '@/utils/events'
+import { getProgress, sortEvents } from '@/utils/events'
+import { useUpcomingEventList } from '@/hooks/useEvents'
+import { Alert } from '@/components/common/Alert'
+import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 
 const FILTERS = [
   { value: 'all', label: 'All' },
@@ -21,10 +24,10 @@ const FILTERS = [
   { value: 'done', label: 'Done' },
 ]
 
-export default function ChecklistPage() {
-  const { events, checklists, toggleItem, addItem, deleteItem, applyTemplate } = useAppState()
+function ChecklistBody({ events }) {
+  const { checklists, toggleItem, addItem, deleteItem, applyTemplate } = useAppState()
   const sorted = sortEvents(events)
-  const [eventId, setEventId] = useState(() => (getNextEvent(events) ?? sorted[0])?.id ?? '')
+  const [eventId, setEventId] = useState(() => sorted[0]?.id ?? '')
   const [filter, setFilter] = useState('all')
   const [text, setText] = useState('')
   const [group, setGroup] = useState(CHECKLIST_GROUPS[0])
@@ -63,7 +66,7 @@ export default function ChecklistPage() {
     <div className="space-y-6">
       <PageHeader title="Smart Checklist" description="Never leave without what you need." />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <div className="space-y-6">
           <Card>
             <CardContent className="grid gap-4 pt-6 sm:grid-cols-[1fr_auto] sm:items-end sm:pt-6">
@@ -164,4 +167,18 @@ export default function ChecklistPage() {
       />
     </div>
   )
+}
+
+export default function ChecklistPage() {
+  const { events, data, error, loading, reload } = useUpcomingEventList()
+  if (loading && !data) return <LoadingSkeleton cards={2} />
+  if (error) {
+    return (
+      <Alert>
+        {error.message}{' '}
+        <button type="button" onClick={reload} className="font-bold underline">Try again</button>
+      </Alert>
+    )
+  }
+  return <ChecklistBody events={events} />
 }

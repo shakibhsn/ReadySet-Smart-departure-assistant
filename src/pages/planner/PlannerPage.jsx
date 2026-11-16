@@ -8,17 +8,18 @@ import { DeparturePreview } from '@/components/planner/DeparturePreview'
 import { ResultCard } from '@/components/planner/ResultCard'
 import { ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useAppState } from '@/hooks/useAppState'
+import { useUpcomingEventList } from '@/hooks/useEvents'
+import { Alert } from '@/components/common/Alert'
+import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 import { calculateDeparture, formatClock, parseDateTime } from '@/utils/departure'
-import { getNextEvent, sortEvents } from '@/utils/events'
+import { sortEvents } from '@/utils/events'
 import { formatDayLabel, formatTime12 } from '@/utils/format'
 
 const CUSTOM = 'custom'
 
-export default function PlannerPage() {
-  const { events } = useAppState()
+function PlannerBody({ events }) {
   const sorted = sortEvents(events)
-  const initial = getNextEvent(events) ?? sorted[0]
+  const initial = sorted[0]
 
   const [selectedId, setSelectedId] = useState(initial?.id ?? CUSTOM)
   const [inputs, setInputs] = useState({
@@ -54,7 +55,7 @@ export default function PlannerPage() {
     <div className="space-y-6">
       <PageHeader title="Departure Planner" description="Work backwards from your event to find the right moment to leave." />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <Card className="self-start">
           <CardHeader>
             <div>
@@ -107,4 +108,18 @@ export default function PlannerPage() {
       </div>
     </div>
   )
+}
+
+export default function PlannerPage() {
+  const { events, data, error, loading, reload } = useUpcomingEventList()
+  if (loading && !data) return <LoadingSkeleton cards={2} />
+  if (error) {
+    return (
+      <Alert>
+        {error.message}{' '}
+        <button type="button" onClick={reload} className="font-bold underline">Try again</button>
+      </Alert>
+    )
+  }
+  return <PlannerBody events={events} />
 }

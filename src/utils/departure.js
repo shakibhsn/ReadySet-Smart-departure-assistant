@@ -1,4 +1,4 @@
-import { differenceInSeconds, format, isValid, parse, subMinutes } from 'date-fns'
+import { differenceInSeconds, isValid, parse, subMinutes } from 'date-fns'
 
 /** Parse a "yyyy-MM-dd" date and "HH:mm" time into a Date. Returns null if invalid. */
 export function parseDateTime(date, time) {
@@ -30,9 +30,12 @@ export function calculateDeparture(eventStart, { travelMinutes, bufferMinutes, p
   return { eventStart, targetArrival, departure, prepStart }
 }
 
-/** Convenience wrapper for event objects in the app's mock data shape. */
+/**
+ * Convenience wrapper for API events. Uses the absolute start instant (startAt), so it is correct
+ * regardless of the browser's timezone. Format the results with formatClock(date, event.timezone).
+ */
 export function getEventDeparture(event) {
-  return calculateDeparture(parseDateTime(event.date, event.startTime), {
+  return calculateDeparture(new Date(event.startAt), {
     travelMinutes: event.travelMinutes,
     bufferMinutes: event.bufferMinutes,
     prepMinutes: event.prepMinutes,
@@ -53,4 +56,8 @@ export function getCountdown(target, now = new Date()) {
   }
 }
 
-export const formatClock = (date) => (date ? format(date, 'h:mm a') : '—')
+/** "9:15 AM". Pass an IANA timeZone to show the clock time in that zone instead of the browser's. */
+export const formatClock = (date, timeZone) =>
+  date
+    ? new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, ...(timeZone && { timeZone }) }).format(date).replace(/\s+/g, ' ')
+    : '—'

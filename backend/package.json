@@ -11,7 +11,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:migrate:test": "node --env-file=.env.test node_modules/prisma/build/index.js migrate deploy",
     "db:validate": "prisma validate",
-    "test": "vitest run"
+    "test": "node scripts/run-tests.mjs",
+    "test:raw": "vitest run"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -22,6 +23,7 @@
     "express-rate-limit": "^8.7.4",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
+    "luxon": "^3.7.2",
     "zod": "^4.6.7"
   },
   "devDependencies": {

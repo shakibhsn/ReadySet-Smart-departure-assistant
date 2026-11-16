@@ -3,7 +3,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { ButtonLink } from '@/components/ui/button'
 import { EventCard } from './EventCard'
 
-export function ScheduleList({ events, showDay = false, emptyTitle = 'Nothing scheduled', emptyDescription }) {
+export function ScheduleList({ events, showDay = false, onDelete, emptyTitle = 'Nothing scheduled', emptyDescription }) {
   if (events.length === 0) {
     return (
       <EmptyState
@@ -17,8 +17,8 @@ export function ScheduleList({ events, showDay = false, emptyTitle = 'Nothing sc
   return (
     <ul className="space-y-3">
       {events.map((e) => (
-        <li key={e.id}>
-          <EventCard event={e} showDay={showDay} />
+        <li key={e.key}>
+          <EventCard event={e} showDay={showDay} onDelete={onDelete} />
         </li>
       ))}
     </ul>

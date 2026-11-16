@@ -57,8 +57,8 @@ export function NextDepartureCard({ event }) {
 
           <dl className="mt-6 grid grid-cols-3 gap-3">
             {[
-              { label: 'Start preparing', value: formatClock(plan.prepStart) },
-              { label: 'Leave at', value: formatClock(plan.departure), strong: true },
+              { label: 'Start preparing', value: formatClock(plan.prepStart, event.timezone) },
+              { label: 'Leave at', value: formatClock(plan.departure, event.timezone), strong: true },
               { label: 'Travel time', value: formatDuration(event.travelMinutes) },
             ].map(({ label, value, strong }) => (
               <div key={label} className={`rounded-xl px-3 py-3 ${strong ? 'bg-white text-ink' : 'bg-white/10'}`}>
@@ -97,7 +97,7 @@ export function NextDepartureCard({ event }) {
               ? 'This event may already be underway.'
               : prepStarted
                 ? 'Preparation window is open. Start getting ready now.'
-                : `Start preparing at ${formatClock(plan.prepStart)}.`}
+                : `Start preparing at ${formatClock(plan.prepStart, event.timezone)}.`}
           </p>
           <ButtonLink to="/planner" variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white">
             Open departure planner

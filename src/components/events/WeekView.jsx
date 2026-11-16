@@ -3,7 +3,7 @@ import { EventCard } from './EventCard'
 import { getEventsOnDay } from '@/utils/events'
 import { cn } from '@/lib/utils'
 
-export function WeekView({ date, events }) {
+export function WeekView({ date, events, onDelete }) {
   const days = eachDayOfInterval({
     start: startOfWeek(date, { weekStartsOn: 1 }),
     end: endOfWeek(date, { weekStartsOn: 1 }),
@@ -24,8 +24,8 @@ export function WeekView({ date, events }) {
             ) : (
               <ul className="space-y-2">
                 {dayEvents.map((e) => (
-                  <li key={e.id}>
-                    <EventCard event={e} />
+                  <li key={e.key}>
+                    <EventCard event={e} onDelete={onDelete} />
                   </li>
                 ))}
               </ul>

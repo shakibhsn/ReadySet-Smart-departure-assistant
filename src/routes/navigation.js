@@ -14,5 +14,7 @@ const EXTRA_TITLES = { '/events/new': 'Create Event' }
 
 export function getPageTitle(pathname) {
   if (EXTRA_TITLES[pathname]) return EXTRA_TITLES[pathname]
+  if (/^\/events\/[^/]+\/edit$/.test(pathname)) return 'Edit Event'
+  if (/^\/events\/[^/]+$/.test(pathname)) return 'Event Details'
   return NAV_ITEMS.find((n) => n.to === pathname)?.label ?? 'ReadySet'
 }

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import AppRoutes from '@/routes'
 import { AuthProvider } from '@/components/common/AuthProvider'
-import { AppStateProvider } from '@/components/common/AppStateProvider'
+import { UserScopedAppState } from '@/components/common/UserScopedAppState'
 import { getToken, setToken } from '@/lib/tokenStorage'
 
 const user = {
@@ -32,14 +32,15 @@ const renderApp = (path = '/') =>
   render(
     <MemoryRouter initialEntries={[path]}>
       <AuthProvider>
-        <AppStateProvider>
+        <UserScopedAppState>
           <AppRoutes />
-        </AppStateProvider>
+        </UserScopedAppState>
       </AuthProvider>
     </MemoryRouter>,
   )
 
-const lastBody = (fetchMock) => JSON.parse(fetchMock.mock.calls.at(-1)[1].body)
+/** Body of the most recent request whose URL ends with the given path. */
+const bodyOf = (fetchMock, path) => JSON.parse(fetchMock.mock.calls.filter(([url]) => url.endsWith(path)).at(-1)[1].body)
 
 describe('protected routes', () => {
   it('redirects unauthenticated visitors to /login without calling the API', async () => {
@@ -93,7 +94,7 @@ describe('login form', () => {
 
     expect(await screen.findByRole('heading', { name: /good (morning|afternoon|evening), Sam/i })).toBeInTheDocument()
     expect(fetchMock.mock.calls[0][0]).toMatch(/\/auth\/login$/)
-    expect(lastBody(fetchMock)).toEqual({ email: 'sam@example.com', password: 'Sup3rSecret!' })
+    expect(bodyOf(fetchMock, '/auth/login')).toEqual({ email: 'sam@example.com', password: 'Sup3rSecret!' })
     expect(getToken()).toBe('jwt-123')
   })
 
@@ -147,7 +148,7 @@ describe('register form', () => {
     await fillRegistration(u)
 
     expect(await screen.findByText(/your account has been created/i)).toBeInTheDocument()
-    expect(lastBody(fetchMock)).toEqual({
+    expect(bodyOf(fetchMock, '/auth/register')).toEqual({
       name: 'Sam Rivera',
       email: 'sam@example.com',
       password: 'Sup3rSecret!',

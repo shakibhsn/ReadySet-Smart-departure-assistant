@@ -11,15 +11,17 @@ datasource db {
 }
 
 model User {
-  id           String          @id @default(uuid()) @db.Uuid
-  name         String          @db.VarChar(100)
-  email        String          @unique @db.VarChar(254)
-  passwordHash String          @map("password_hash")
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @db.VarChar(100)
+  email           String           @unique @db.VarChar(254)
+  passwordHash    String           @map("password_hash")
   // Bumped on logout; tokens carry the version they were issued with, so old ones stop working.
-  tokenVersion Int             @default(0) @map("token_version")
-  createdAt    DateTime        @default(now()) @map("created_at")
-  updatedAt    DateTime        @updatedAt @map("updated_at")
-  preference   UserPreference?
+  tokenVersion    Int              @default(0) @map("token_version")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  preference      UserPreference?
+  events          Event[]
+  recurrenceRules RecurrenceRule[]
 
   @@map("users")
 }
@@ -38,4 +40,48 @@ model UserPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
+}
+
+// Recurrence is stored as a RULE, never as generated rows. Occurrences are calculated on demand
+// for a requested date range (see src/services/recurrence.service.js).
+model RecurrenceRule {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  frequency  String    @db.VarChar(10) // DAILY | WEEKLY
+  interval   Int       @default(1)
+  daysOfWeek Int[]     @map("days_of_week") // ISO weekdays 1=Mon..7=Sun (WEEKLY only)
+  endsAt     DateTime? @map("ends_at") // last instant (end of the chosen local day) a series may produce occurrences
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  // Owned by the user too, so deleting a user cascades and can never leave orphan rules.
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event?
+
+  @@map("recurrence_rules")
+}
+
+model Event {
+  id                    String   @id @default(uuid()) @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  title                 String   @db.VarChar(150)
+  category              String   @db.VarChar(20)
+  startAt               DateTime @map("start_at") // absolute UTC instant of the first occurrence
+  timezone              String   @db.VarChar(64) // IANA zone the user meant the local time in
+  destination           String?  @db.VarChar(255)
+  notes                 String?  @db.VarChar(2000)
+  travelDurationMinutes Int      @map("travel_duration_minutes")
+  preparationMinutes    Int      @map("preparation_minutes")
+  arrivalBufferMinutes  Int      @map("arrival_buffer_minutes")
+  isRecurring           Boolean  @default(false) @map("is_recurring")
+  recurrenceRuleId      String?  @unique @map("recurrence_rule_id") @db.Uuid
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recurrenceRule RecurrenceRule? @relation(fields: [recurrenceRuleId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startAt])
+  @@index([userId, category])
+  @@map("events")
 }

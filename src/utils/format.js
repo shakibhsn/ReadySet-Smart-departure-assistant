@@ -37,3 +37,7 @@ export function formatDuration(minutes) {
   const r = m % 60
   return r ? `${h}h ${r}m` : `${h}h`
 }
+
+/** Today's calendar date ("yyyy-MM-dd") in the given IANA timezone. */
+export const todayKey = (timeZone) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())

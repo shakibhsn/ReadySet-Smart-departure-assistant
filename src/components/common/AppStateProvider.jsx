@@ -1,33 +1,18 @@
 import { useCallback, useMemo, useState } from 'react'
 import { AppStateContext } from '@/lib/appStateContext'
-import { mockEvents } from '@/data/events'
-import { itemsFromTemplate, makeItem, mockChecklists } from '@/data/checklists'
+import { itemsFromTemplate, makeItem } from '@/data/checklists'
 import { mockNotifications } from '@/data/notifications'
 import { defaultSettings } from '@/data/user'
-import { sortEvents } from '@/utils/events'
 
+/**
+ * Temporary, in-memory client state that is NOT in the database yet (Day 5+ moves it there):
+ * checklists (keyed by real event id), notifications (still mock) and device-only settings.
+ * Events are no longer here: they come from the API (see hooks/useEventQuery.js).
+ */
 export function AppStateProvider({ children }) {
-  const [events, setEvents] = useState(mockEvents)
-  const [checklists, setChecklists] = useState(mockChecklists)
+  const [checklists, setChecklists] = useState({})
   const [notifications, setNotifications] = useState(mockNotifications)
   const [settings, setSettings] = useState(defaultSettings)
-
-  const addEvent = useCallback((event) => {
-    const id = `evt-${Date.now().toString(36)}`
-    setEvents((prev) => sortEvents([...prev, { ...event, id }]))
-    setNotifications((prev) => [
-      {
-        id: `n-${id}`,
-        category: 'event',
-        title: 'New event added',
-        body: `${event.title} was added to your schedule.`,
-        createdAt: new Date().toISOString(),
-        read: false,
-      },
-      ...prev,
-    ])
-    return id
-  }, [])
 
   const updateChecklist = useCallback((eventId, fn) => {
     setChecklists((prev) => ({ ...prev, [eventId]: fn(prev[eventId] ?? []) }))
@@ -67,12 +52,11 @@ export function AppStateProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      events, addEvent,
       checklists, toggleItem, addItem, deleteItem, applyTemplate,
       notifications, markRead, markAllRead,
       settings, updateSettings,
     }),
-    [events, addEvent, checklists, toggleItem, addItem, deleteItem, applyTemplate, notifications, markRead, markAllRead, settings, updateSettings],
+    [checklists, toggleItem, addItem, deleteItem, applyTemplate, notifications, markRead, markAllRead, settings, updateSettings],
   )
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>

@@ -50,7 +50,7 @@ export function MonthCalendar({ month, events, selected, onSelect }) {
               </span>
               <span className="flex flex-wrap justify-center gap-1 sm:justify-start">
                 {dayEvents.slice(0, 3).map((e) => (
-                  <span key={e.id} className={cn('size-1.5 rounded-full', getCategory(e.category).dot)} />
+                  <span key={e.key} className={cn('size-1.5 rounded-full', getCategory(e.category).dot)} />
                 ))}
               </span>
             </button>
