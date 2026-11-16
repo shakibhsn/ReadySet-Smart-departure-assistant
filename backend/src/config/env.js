@@ -13,7 +13,7 @@ const flag = z.enum(['true', 'false']).default('false').transform((v) => v === '
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().min(1).max(65535).default(4100),
+  PORT: z.coerce.number().int().min(1).max(65535).default(5174),
   DATABASE_URL: z
     .string()
     .min(1, 'is required')

@@ -9,7 +9,7 @@ Events live in PostgreSQL. Checklists, notifications and weather are still tempo
 
 ```
 frontend (repo root)   React 19 · Vite · Tailwind v4 · React Router · date-fns      http://localhost:5173
-backend/               Express 5 · Prisma 6 · PostgreSQL · JWT · bcrypt · Zod        http://localhost:4100
+backend/               Express 5 · Prisma 6 · PostgreSQL · JWT · bcrypt · Zod        http://localhost:5174
 ```
 
 ## 1. First-time setup
@@ -58,11 +58,11 @@ npm run db:generate    # generate Prisma Client
 npm run db:migrate     # applies every migration in prisma/migrations (init, add_token_version, add_events_and_recurrence, add_email_system) to readyset_dev
 npm --prefix backend run db:migrate:test   # applies the same migration to readyset_test
 ```
-`migrate dev` applies the checked-in migrations to the empty `readyset_dev`. Port 4100 is used because 4000 is commonly taken by other local projects. Never run `prisma migrate reset` or `db push --force-reset` on a database you care about.
+`migrate dev` applies the checked-in migrations to the empty `readyset_dev`. Port 5174 is used for the API because 4000 is commonly taken by other local projects. (Vite also falls back to 5174 when 5173 is busy: if you start a second frontend dev server, stop it or pass `--port` so it does not collide with the API.) Never run `prisma migrate reset` or `db push --force-reset` on a database you care about.
 
 ## 2. Running (two terminals)
 ```bash
-npm run dev:api        # terminal 1 → http://localhost:4100  (GET /api/health)
+npm run dev:api        # terminal 1 → http://localhost:5174  (GET /api/health)
 npm run dev            # terminal 2 → http://localhost:5173
 ```
 
