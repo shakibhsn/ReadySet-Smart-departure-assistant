@@ -153,11 +153,50 @@ describe('JWT authentication (GET /api/auth/me)', () => {
   })
 })
 
-describe('POST /api/auth/logout', () => {
-  it('returns 200 and explains logout is client-side', async () => {
-    const res = await api().post('/api/auth/logout')
-    expect(res.status).toBe(200)
-    expect(res.body.message).toMatch(/client/i)
+describe('POST /api/auth/logout (server-side revocation)', () => {
+  it('requires authentication (401)', async () => {
+    expect((await api().post('/api/auth/logout')).status).toBe(401)
+  })
+
+  it('invalidates the token that was used, so it is rejected afterwards (401)', async () => {
+    const { token } = await registerAndLogin()
+    expect((await api().get('/api/auth/me').set(bearer(token))).status).toBe(200)
+
+    const out = await api().post('/api/auth/logout').set(bearer(token))
+    expect(out.status).toBe(200)
+
+    expect((await api().get('/api/auth/me').set(bearer(token))).status).toBe(401)
+    expect((await api().get('/api/users/me').set(bearer(token))).status).toBe(401)
+    expect((await api().get('/api/users/me/preferences').set(bearer(token))).status).toBe(401)
+  })
+
+  it('invalidates ALL earlier tokens of that user, and a fresh login works again', async () => {
+    const { token: first, body } = await registerAndLogin()
+    const second = (await api().post('/api/auth/login').send({ email: body.email, password: body.password })).body.data.token
+
+    await api().post('/api/auth/logout').set(bearer(first))
+    expect((await api().get('/api/auth/me').set(bearer(second))).status).toBe(401)
+
+    const fresh = (await api().post('/api/auth/login').send({ email: body.email, password: body.password })).body.data.token
+    expect((await api().get('/api/auth/me').set(bearer(fresh))).status).toBe(200)
+  })
+
+  it("does not affect other users' tokens", async () => {
+    const a = await registerAndLogin()
+    const b = await registerAndLogin()
+    await api().post('/api/auth/logout').set(bearer(a.token))
+    expect((await api().get('/api/auth/me').set(bearer(b.token))).status).toBe(200)
+  })
+
+  it('rejects a correctly signed token that has no token version (401)', async () => {
+    const { user } = await registerAndLogin()
+    const noVersion = jwt.sign({ sub: user.id }, env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' })
+    expect((await api().get('/api/auth/me').set(bearer(noVersion))).status).toBe(401)
+  })
+
+  it('rejects a correctly signed token with a non-UUID subject without hitting the database (401)', async () => {
+    const odd = jwt.sign({ sub: "1'; DROP TABLE users;--", tv: 0 }, env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' })
+    expect((await api().get('/api/auth/me').set(bearer(odd))).status).toBe(401)
   })
 })
 

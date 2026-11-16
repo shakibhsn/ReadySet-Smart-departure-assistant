@@ -21,6 +21,6 @@ export function createAuthRouter({ authRateLimit } = {}) {
   router.post('/register', limiter, validate(registerSchema), controller.register)
   router.post('/login', limiter, validate(loginSchema), controller.login)
   router.get('/me', requireAuth, controller.me)
-  router.post('/logout', controller.logout)
+  router.post('/logout', requireAuth, controller.logout)
   return router
 }

@@ -9,13 +9,16 @@ dotenv.config({
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().min(1).max(65535).default(4000),
+  PORT: z.coerce.number().int().min(1).max(65535).default(4100),
   DATABASE_URL: z
     .string()
     .min(1, 'is required')
     .refine((v) => /^postgres(ql)?:\/\//.test(v), 'must be a postgresql:// URL'),
   JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
-  JWT_EXPIRES_IN: z.string().min(1).default('1d'),
+  JWT_EXPIRES_IN: z
+    .string()
+    .regex(/^[1-9]\d*(s|m|h|d|w)$/, 'must look like 15m, 12h or 1d')
+    .default('1d'),
   FRONTEND_URL: z.url('must be a valid URL, e.g. http://localhost:5173'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
 })

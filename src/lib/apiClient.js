@@ -1,7 +1,7 @@
 import { getToken } from './tokenStorage'
 
 // The only place the backend URL is configured (see .env.example).
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api').replace(/\/$/, '')
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4100/api').replace(/\/$/, '')
 
 export class ApiError extends Error {
   constructor(message, { status = 0, errors = [], isNetworkError = false } = {}) {

@@ -4,7 +4,7 @@ import { prisma } from '../config/database.js'
 import { env } from '../config/env.js'
 import { AppError } from '../utils/apiResponse.js'
 
-// Fields that are safe to send to the client. passwordHash is deliberately absent.
+// Fields that are safe to send to the client. passwordHash and tokenVersion are deliberately absent.
 export const safeUserSelect = {
   id: true,
   name: true,
@@ -23,8 +23,10 @@ export const preferenceSelect = {
 // Used to keep login timing similar whether or not the email exists.
 const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', env.BCRYPT_ROUNDS)
 
-export const signToken = (userId) =>
-  jwt.sign({ sub: userId }, env.JWT_SECRET, { algorithm: 'HS256', expiresIn: env.JWT_EXPIRES_IN })
+// The token carries the user's current tokenVersion ("tv"). Logout bumps the version in the
+// database, which makes every token issued before it invalid.
+export const signToken = (userId, tokenVersion) =>
+  jwt.sign({ sub: userId, tv: tokenVersion }, env.JWT_SECRET, { algorithm: 'HS256', expiresIn: env.JWT_EXPIRES_IN })
 
 export async function registerUser({ name, email, password }) {
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } })
@@ -33,27 +35,26 @@ export async function registerUser({ name, email, password }) {
   const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS)
 
   // User and default preferences are created atomically: both succeed or neither does.
-  const user = await prisma.$transaction(async (tx) => {
-    const created = await tx.user.create({ data: { name, email, passwordHash }, select: safeUserSelect })
+  const { tokenVersion, ...user } = await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({ data: { name, email, passwordHash }, select: { ...safeUserSelect, tokenVersion: true } })
     const preference = await tx.userPreference.create({ data: { userId: created.id }, select: preferenceSelect })
     return { ...created, preference }
   })
 
-  return { user, token: signToken(user.id) }
+  return { user, token: signToken(user.id, tokenVersion) }
 }
 
 export async function loginUser({ email, password }) {
-  const user = await prisma.user.findUnique({
+  const found = await prisma.user.findUnique({
     where: { email },
-    select: { ...safeUserSelect, passwordHash: true, preference: { select: preferenceSelect } },
+    select: { ...safeUserSelect, passwordHash: true, tokenVersion: true, preference: { select: preferenceSelect } },
   })
 
-  const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH)
-  if (!user || !valid) throw new AppError(401, 'Invalid email or password')
+  const valid = await bcrypt.compare(password, found?.passwordHash ?? DUMMY_HASH)
+  if (!found || !valid) throw new AppError(401, 'Invalid email or password')
 
-  // eslint-disable-next-line no-unused-vars
-  const { passwordHash, ...safeUser } = user
-  return { user: safeUser, token: signToken(user.id) }
+  const { passwordHash, tokenVersion, ...user } = found // eslint-disable-line no-unused-vars
+  return { user, token: signToken(user.id, tokenVersion) }
 }
 
 export async function getCurrentUser(userId) {
@@ -64,4 +65,9 @@ export async function getCurrentUser(userId) {
   // Valid token for a user that no longer exists (e.g. deleted account).
   if (!user) throw new AppError(401, 'Invalid token')
   return user
+}
+
+/** Logout: invalidates every token issued so far for this user (on all devices). */
+export async function revokeUserTokens(userId) {
+  await prisma.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } })
 }
