@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import AppRoutes from '@/routes'
 import { AuthProvider } from '@/components/common/AuthProvider'
-import { UserScopedAppState } from '@/components/common/UserScopedAppState'
 import { getToken, setToken } from '@/lib/tokenStorage'
 
 const user = {
@@ -32,9 +31,9 @@ const renderApp = (path = '/') =>
   render(
     <MemoryRouter initialEntries={[path]}>
       <AuthProvider>
-        <UserScopedAppState>
+        
           <AppRoutes />
-        </UserScopedAppState>
+        
       </AuthProvider>
     </MemoryRouter>,
   )

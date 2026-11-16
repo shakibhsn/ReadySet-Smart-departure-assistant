@@ -5,7 +5,7 @@ export const notFoundHandler = (_req, _res, next) => next(new AppError(404, 'Rou
 
 // Express identifies error handlers by their 4 arguments, so `_next` must stay in the signature.
 export function errorHandler(err, _req, res, _next) {
-  if (err instanceof AppError) return sendError(res, err.status, err.message, err.errors)
+  if (err instanceof AppError) return sendError(res, err.status, err.message, err.errors, err.code)
 
   // Malformed JSON / oversized body from express.json()
   if (err?.type === 'entity.parse.failed') return sendError(res, 400, 'Malformed JSON body')

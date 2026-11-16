@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Lock, Mail, User } from 'lucide-react'
+import { Lock, Mail, MailCheck, User } from 'lucide-react'
 import AuthLayout from '@/layouts/AuthLayout'
 import { Alert } from '@/components/common/Alert'
 import { FormInput } from '@/components/common/FormInput'
-import { Button } from '@/components/ui/button'
+import { Button, ButtonLink } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/hooks/useAuth'
 import { ApiError, fieldErrorsFrom } from '@/lib/apiClient'
+import { resendVerificationRequest } from '@/services/authApi'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -18,6 +19,8 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [checkEmail, setCheckEmail] = useState(false) // shown when verification is mandatory
+  const [resent, setResent] = useState(false)
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
 
@@ -35,8 +38,12 @@ export default function RegisterPage() {
 
     setSubmitting(true)
     try {
-      await register({ name: form.name, email: form.email, password: form.password, confirmPassword: form.confirm })
-      navigate('/', { replace: true })
+      const result = await register({ name: form.name, email: form.email, password: form.password, confirmPassword: form.confirm })
+      if (result.verificationRequired) {
+        setCheckEmail(true) // no session yet: the user must open the emailed link first
+      } else {
+        navigate('/', { replace: true }) // signed in; the dashboard shows a verification reminder
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         // The backend names the field as "confirmPassword"; this form calls it "confirm".
@@ -47,8 +54,39 @@ export default function RegisterPage() {
       } else {
         setFormError('Something went wrong. Please try again.')
       }
+    } finally {
       setSubmitting(false)
     }
+  }
+
+  const resend = async () => {
+    await resendVerificationRequest(form.email.trim()).catch(() => {})
+    setResent(true)
+  }
+
+  if (checkEmail) {
+    return (
+      <AuthLayout title="Check your email" subtitle="One more step to finish creating your account.">
+        <div className="space-y-5 text-center" role="status">
+          <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-accent-50 text-accent-600">
+            <MailCheck className="size-7" />
+          </span>
+          <p className="text-sm text-muted">
+            We sent a verification link to <strong className="text-ink">{form.email.trim()}</strong>. Open it to activate your account, then log in. The link expires in 24 hours.
+          </p>
+          {resent ? (
+            <Alert variant="success">If the account still needs verification, a new link is on its way.</Alert>
+          ) : (
+            <Button variant="outline" onClick={resend} className="w-full">
+              Resend verification email
+            </Button>
+          )}
+          <ButtonLink to="/login" className="w-full">
+            Go to login
+          </ButtonLink>
+        </div>
+      </AuthLayout>
+    )
   }
 
   return (

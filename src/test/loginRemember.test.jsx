@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import AppRoutes from '@/routes'
 import { AuthProvider } from '@/components/common/AuthProvider'
-import { UserScopedAppState } from '@/components/common/UserScopedAppState'
 
 const user = { id: 'u1', name: 'Sam Rivera', email: 'sam@example.com', preference: null }
 const KEY = 'readyset.token'
@@ -24,9 +23,9 @@ async function loginWith({ remember }) {
   render(
     <MemoryRouter initialEntries={['/login']}>
       <AuthProvider>
-        <UserScopedAppState>
+        
           <AppRoutes />
-        </UserScopedAppState>
+        
       </AuthProvider>
     </MemoryRouter>,
   )

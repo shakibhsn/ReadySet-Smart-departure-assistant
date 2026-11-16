@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import AppRoutes from '@/routes'
 import { AuthProvider } from '@/components/common/AuthProvider'
-import { UserScopedAppState } from '@/components/common/UserScopedAppState'
 
 const users = {
   'a@example.com': { id: 'user-a', name: 'Alice Anders', email: 'a@example.com', preference: null },
@@ -32,9 +31,8 @@ describe('app state is scoped to the signed-in user', () => {
     render(
       <MemoryRouter initialEntries={['/login']}>
         <AuthProvider>
-          <UserScopedAppState>
             <AppRoutes />
-          </UserScopedAppState>
+          
         </AuthProvider>
       </MemoryRouter>,
     )

@@ -49,10 +49,13 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(async (form) => {
     const res = await registerRequest(form)
-    setToken(res.data.token)
-    setJustRegistered(true)
-    setUser(res.data.user)
-    return res.data.user
+    // When email verification is mandatory the backend returns NO token: the user must verify first.
+    if (res.data.token) {
+      setToken(res.data.token)
+      setJustRegistered(true)
+      setUser(res.data.user)
+    }
+    return { user: res.data.user, verificationRequired: Boolean(res.data.verificationRequired) }
   }, [])
 
   const logout = useCallback(async () => {

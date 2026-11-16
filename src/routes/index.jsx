@@ -1,8 +1,13 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from '@/layouts/AppLayout'
 import { ProtectedRoute, PublicOnlyRoute } from '@/components/common/RouteGuards'
+import { UserScopedAppState } from '@/components/common/UserScopedAppState'
 import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
+import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
+import VerifyEmailPage from '@/pages/auth/VerifyEmailPage'
+import ConfirmEmailChangePage from '@/pages/auth/ConfirmEmailChangePage'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
 import SchedulePage from '@/pages/schedule/SchedulePage'
 import CreateEventPage from '@/pages/events/CreateEventPage'
@@ -20,8 +25,14 @@ export default function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
       </Route>
+      {/* Emailed links must work whether or not the visitor is logged in */}
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/confirm-email-change" element={<ConfirmEmailChangePage />} />
       <Route element={<ProtectedRoute />}>
-        <Route element={<AppLayout />}>
+        {/* Per-user state lives ONLY here, so public pages (reset / verify links) are never remounted when a stored session is restored */}
+        <Route element={<UserScopedAppState><AppLayout /></UserScopedAppState>}>
           <Route index element={<DashboardPage />} />
           <Route path="schedule" element={<SchedulePage />} />
           <Route path="events/new" element={<CreateEventPage />} />

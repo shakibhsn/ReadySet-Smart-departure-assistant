@@ -4,7 +4,7 @@
 
 ReadySet works backwards from an event to tell you when to start preparing and when to leave.
 
-**Status: Day 3** — Express + PostgreSQL + Prisma backend with JWT authentication **and a complete, user-specific event management system** (create, list, details, update, delete, upcoming, filters, pagination, daily/weekly recurrence), connected to the React frontend.
+**Status:** events (Day 3) plus a complete transactional **email system** (email verification, password reset, email change, reminders, preferences): see §9.
 Events live in PostgreSQL. Checklists, notifications and weather are still temporary/mock data (see §8).
 
 ```
@@ -55,7 +55,7 @@ The server validates all variables at startup and prints which ones are missing/
 ### 1d. Create the tables
 ```bash
 npm run db:generate    # generate Prisma Client
-npm run db:migrate     # applies every migration in prisma/migrations (init, add_token_version, add_events_and_recurrence) to readyset_dev
+npm run db:migrate     # applies every migration in prisma/migrations (init, add_token_version, add_events_and_recurrence, add_email_system) to readyset_dev
 npm --prefix backend run db:migrate:test   # applies the same migration to readyset_test
 ```
 `migrate dev` applies the checked-in migrations to the empty `readyset_dev`. Port 4100 is used because 4000 is commonly taken by other local projects. Never run `prisma migrate reset` or `db push --force-reset` on a database you care about.
@@ -87,6 +87,7 @@ All responses: `{ success, message, data }` or `{ success: false, message, error
 | `POST /api/auth/login` | – | `email, password` → 200 `{ user, token }`; 401 generic "Invalid email or password" |
 | `GET /api/auth/me` | Bearer | user + preferences |
 | `POST /api/auth/logout` | Bearer | Revokes every token issued so far for the account (see §5) |
+| Email endpoints (verify, resend, forgot/reset password, email change, email preferences) | see §9 | |
 | `GET / PATCH /api/users/me` | Bearer | PATCH accepts `name` only |
 | `GET / PATCH /api/users/me/preferences` | Bearer | `defaultPreparationMinutes` (0–600), `defaultArrivalBufferMinutes` (0–240), `preferredTravelMode` (`manual\|walk\|transit\|drive\|bike`), `timezone` (IANA) |
 | `POST /api/events` | Bearer | Create (201). `userId` is never accepted; it comes from the JWT |
@@ -108,8 +109,9 @@ All responses: `{ success, message, data }` or `{ success: false, message, error
 ## 6. Testing
 - **Backend** (`npm run test:api`): registration (valid, missing fields, bad email, weak password, mismatch, duplicate, hashed storage), login (valid, wrong password, unknown email, missing fields, 429 rate limit), JWT (missing/invalid/`alg:none`/expired/valid/deleted user), profile & preference validation, and **user A vs user B isolation**. Tests only delete rows with `@readyset.test` emails and only in a `*_test` database.
   Day 3 adds `tests/events.test.js` (80 API tests on a real PostgreSQL: validation matrix, CRUD, pagination with stable order, category/date filters, upcoming, occurrences, recurrence rule storage/replace/remove, cascade deletes, and two-user isolation for read/update/delete/upcoming) and `tests/recurrence.test.js` (12 pure tests: daily, weekly, intervals, end dates, no duplicates, DST, timezone parsing).
-- **Frontend** (`npm test`, 38 tests): register/login forms hit the right endpoints with the right bodies, server/network errors render, protected routes, session restore, logout. Day 3 adds `events.test.jsx` against a stateful fake API (`src/test/fakeApi.js`): Create Event submits local time + timezone (and weekly recurrence), client/server validation errors, duplicate-submit blocking, Schedule shows API events with category/date filters and pagination, empty/error/expired-session states, edit (PATCH), delete with confirmation and cancel, Dashboard shows real next/today/upcoming/count, and logout clears event state so user B never sees user A's events.
-- **Known tooling flake (Windows):** in roughly 1 of 4-5 runs the Vitest *worker process* dies at startup with exit code `3221226505` (`0xC0000409`) before any test runs. It only reproduced when the worker loads `bcrypt` and Prisma together, and it never produced an assertion failure; the cause was not found. `backend/scripts/run-tests.mjs` therefore re-runs the whole suite (max 3 attempts) **only** when the worker crashed, prints a warning when it does, and never retries an actual test failure.
+- **Frontend** (`npm test`, 65 tests): auth forms, protected routes, session restore, logout, `events.test.jsx` (stateful fake API: create/edit/delete, filters, pagination, empty/error/expired states, per-user state) and `email.test.jsx` (verification banner and Settings status/resend, login `EMAIL_NOT_VERIFIED` notice, mandatory-verification registration, forgot-password and reset-password forms incl. loading/success/expired/used/invalid states, verify and confirm-email-change links submitted exactly once, email-preference switches incl. revert on failure, change-email form).
+  The email system adds `tests/email.test.js` (registration email, verification/resend/forgot/reset/email-change flows, expired/reused tokens, rate limits, backward compatibility for pre-existing users, mandatory mode, preferences authorization/isolation), `tests/emailService.test.js` (retry/backoff/idempotency, duplicate guard, Resend error mapping, console mode, startup config failures, template escaping) and `tests/reminders.test.js` (departure maths, timing/grace/preferences rules, sweep with dedupe, event edits/deletes, recurrence). **All use a mock mailbox: automated tests can never send real email** (`EMAIL_MODE=provider` is refused under `NODE_ENV=test`). 211 backend tests in total.
+- **Known tooling flake (Windows):** the Vitest *worker process* sometimes dies with exit code `3221226505` (`0xC0000409`), at startup or mid-run, with no assertion failure. It only reproduced on database-backed tests, and it is **not** caused by the native `bcrypt` addon (swapping in pure-JS `bcryptjs` still crashed, 3 of 10 runs). The cause was not found. `backend/scripts/run-tests.mjs` runs each test **file** in its own Vitest process and re-runs only that file (max 3 attempts) when its worker crashed, prints a warning when it does, and never retries an actual test failure.
 
 ## 7. Structure
 ```
@@ -166,7 +168,90 @@ Every event query in `event.service.js` filters by `userId` taken from the verif
 ### Still temporary (not in the database yet)
 Checklists (keyed by real event id, in browser memory, reset on reload), notifications (mock seed), weather (mock placeholder), and the reminder/theme switches.
 
-## 9. Dependency audit (`npm audit` in `backend/`)
+## 9. Email system
+
+### Architecture
+```
+controllers / services (auth, accountEmail, reminder)         <- business logic never imports a provider SDK
+        │  queueEmail({ type, to, template, dedupeKey })
+        ▼
+services/email/emailService.js   logging (email_logs), bounded retries, idempotency key, duplicate guard
+        │  provider.send({ to, from, subject, html, text, idempotencyKey })
+        ▼
+providers.js ──► resendProvider.js   (EMAIL_MODE=provider, EMAIL_PROVIDER=resend)
+             └─► consoleProvider.js  (EMAIL_MODE=console, nothing leaves your machine)
+templates/  baseTemplate + verify / reset / password-changed / email-change / event-reminder (HTML + plain text)
+```
+- **Emails are queued, never awaited in the request**, so a provider outage cannot fail registration/login, and response time does not reveal whether an address exists. `sendEmail` never throws. (Limitation: the queue is in-process memory; an email queued at the instant the server is killed is lost. The `email_logs` row shows it as `PENDING`.)
+- **Nothing is claimed about delivery.** Status `ACCEPTED` in `email_logs` means *the provider accepted the message*. Inbox delivery, bounces and spam complaints are not tracked: webhooks are **not implemented**. If you add Resend webhooks later, verify the signature of every event before trusting it.
+
+### Single-use tokens (`auth_tokens`)
+Verification, password-reset and email-change links use 256-bit random tokens. **Only the SHA-256 hash is stored**; the plaintext exists only in the email link. A token is consumed with an atomic conditional update, so two simultaneous requests cannot both succeed. Errors carry a `code` the UI uses: `INVALID_TOKEN`, `TOKEN_EXPIRED`, `TOKEN_USED`. Lifetimes: verify 24 h, reset 30 min, email change 60 min. Requesting a new link deletes the older unused one, and there is a 60 s per-account cooldown so nobody can be mail-bombed.
+
+### Endpoints
+| Endpoint | Auth | Behaviour |
+|---|---|---|
+| `POST /api/auth/verify-email` `{ token }` | – | Marks the address verified; token consumed |
+| `POST /api/auth/resend-verification` `{ email }` | – | **Always the same 200** (no account enumeration); sends only to an existing unverified account; rate limited (5 / 15 min / IP) + cooldown |
+| `POST /api/auth/forgot-password` `{ email }` | – | **Always the same 200**; rate limited + cooldown |
+| `POST /api/auth/reset-password` `{ token, password, confirmPassword }` | – | Sets the password (bcrypt), **bumps `tokenVersion` = every existing JWT is revoked**, deletes other reset tokens, sends a "password changed" email |
+| `POST /api/users/me/email-change` `{ newEmail, password }` | Bearer | Requires the current password (wrong password = 403, not 401). Sends a confirmation link to the **new** address; the account email does **not** change yet. An address already in use gets the identical response and no email |
+| `POST /api/auth/confirm-email-change` `{ token }` | – | Switches the address (marked verified), revokes all sessions, notifies the **old** address |
+| `GET / PATCH /api/users/me/email-preferences` | Bearer | `upcomingEventReminders`, `prepStartReminders`, `departureReminders` (all default **off**). Security, verification and reset emails are listed as always-on and **cannot** be changed (unknown keys → 400) |
+
+### Configuration (`backend/.env`)
+| Variable | Meaning |
+|---|---|
+| `EMAIL_MODE` | `console` (default): print a preview, send nothing. `provider`: really send. **Production requires `provider`**; the server refuses to start otherwise. Tests refuse `provider` |
+| `EMAIL_PROVIDER` | `resend` |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Required when `EMAIL_MODE=provider` (names are validated at startup; values are never printed) |
+| `EMAIL_FROM_NAME` | Display name (default `ReadySet`) |
+| `APP_BASE_URL` | Frontend URL used inside email links (defaults to `FRONTEND_URL`) |
+| `SUPPORT_EMAIL` | Optional contact shown in email footers |
+| `EMAIL_VERIFICATION_REQUIRED` | `false` (default) or `true`; see the rollout below |
+| `EMAIL_REMINDERS_ENABLED` | `true` starts the reminder scheduler (default `false`) |
+
+### Local development
+Leave `EMAIL_MODE=console`. Every email appears in the **API terminal** as a masked-recipient preview **including the plain-text body, so you can click the verify / reset links**. The body is only printed outside production. Nothing is ever sent, so you cannot email real people by accident.
+
+### Resend dashboard: what *you* must do (cannot be done from code)
+1. Create a Resend account and open **Domains → Add Domain**. Prefer a sending subdomain such as `mail.yourdomain.com`.
+2. Resend then shows the **exact DNS records** for that domain (SPF, DKIM, and the DMARC recommendation, if shown). Add them **exactly as displayed** at your DNS provider; do not copy records from any other source or from this README. Click **Verify** and wait until the domain shows *Verified* (DNS can take minutes to hours).
+3. **API Keys → Create API Key** with *Sending access*, restricted to your domain. Copy it once.
+4. Put it in the production environment only: `RESEND_API_KEY=...`, `EMAIL_FROM=no-reply@mail.yourdomain.com` (an address on the verified domain), `EMAIL_MODE=provider`, `APP_BASE_URL=https://your-frontend`.
+5. Send yourself a real verification email and check it lands in the inbox (and not spam) in Gmail and Outlook before enabling anything for users.
+6. Optional but recommended: publish a DMARC policy as Resend/your DNS provider instructs and review reports. Resend's shared test sender is limited (see Resend's docs); use your verified domain for real testing.
+
+### Verification rollout (existing users are never locked out)
+- The migration leaves **`email_verified_at = NULL` for every existing user** (nobody is auto-verified, nothing is faked) and **`email_verification_required = false`**.
+- Existing and new users can all use the app while `EMAIL_VERIFICATION_REQUIRED=false`; unverified users see a reminder banner and a status/resend control in Settings.
+1. Deploy with `EMAIL_VERIFICATION_REQUIRED=false`. New sign-ups get a verification email; nobody is blocked.
+2. Configure Resend (above), switch to `EMAIL_MODE=provider`, test end to end.
+3. Turn on `EMAIL_VERIFICATION_REQUIRED=true`. From then on **new accounts** get no session until they verify, and login answers `403 EMAIL_NOT_VERIFIED` (after the password is checked) until they do. The flag is stored **per user**, so it never applies to accounts that existed before, and switching the env var back does not unlock accounts that were created while it was on.
+4. Forcing verification on *old* accounts is a separate product decision and is deliberately not implemented.
+
+### Reminder emails (upcoming event / start preparing / time to leave)
+Opt-in per type in Settings; sent only to **verified** addresses. A sweep runs every minute when `EMAIL_REMINDERS_ENABLED=true` and recomputes what is due from the **current** event data, using the Day 1 formulas (target arrival = start − buffer, departure = target − travel, prep start = departure − preparation) in the **event's own timezone** (Asia/Dhaka only as the stored default). Consequently: edited events change their reminder times automatically; deleted events send nothing; an event that has already started sends nothing; recurring events are expanded only in a short look-ahead window (no infinite jobs); after downtime, reminders that came due less than 30 minutes ago are still sent and older ones are skipped. A unique `dedupe_key` (event + occurrence time + type) in `email_logs` guarantees a reminder is sent at most once, even across restarts or several server instances. Upcoming-event reminders go out 60 minutes before the start. A failed reminder is not hammered again (its dedupe key is already taken).
+
+### Reliability & logging
+`email_logs` records type, recipient, provider, provider message id, status (`PENDING`, `RETRYING`, `ACCEPTED`, `FAILED`), attempts and an error **code**: never bodies, tokens, URLs or passwords. Retryable provider errors (rate limits, 5xx, network) are retried up to **3 attempts** with exponential backoff (500 ms, 1 s) using one idempotency key; permanent errors (bad key, invalid sender, validation) are not retried. Structured JSON logs use masked addresses (`j***@e***.com`).
+
+### Switching provider (e.g. Brevo)
+Implement `{ name, send({ to, from, subject, html, text, idempotencyKey }) }` (throw `EmailProviderError` with `retryable` and a `code`), add one `case` in `services/email/providers.js` and one enum value in `config/env.js`. Controllers, auth logic, templates and tests do not change.
+
+### Production checklist
+- [ ] Domain verified in Resend, DNS records exactly as shown there, API key scoped to the domain.
+- [ ] `EMAIL_MODE=provider`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_BASE_URL` (https) set; `NODE_ENV=production`; strong `JWT_SECRET`.
+- [ ] `npm run db:deploy` applied (`20261118000000_add_email_system`).
+- [ ] Sent real verification, reset and email-change emails to Gmail and Outlook and checked the inbox/spam placement.
+- [ ] `EMAIL_REMINDERS_ENABLED=true` on **one** instance only is simplest (duplicates are prevented anyway).
+- [ ] Rate limiting is in-memory per process: use a shared store behind multiple instances; set `trust proxy` behind a proxy so per-IP limits work.
+- [ ] Decide when to enable `EMAIL_VERIFICATION_REQUIRED=true`.
+
+### Known limitations
+No bounce/complaint/delivery webhooks (so "delivered" is unknown); the email queue is in memory; password changes while logged in (a "change password" settings form) are not implemented, only reset-by-email; reminder defaults (60 min upcoming lead, 30 min grace) are constants; reminders for several thousand opted-in users would need batching; no email unsubscribe link (preferences are in Settings).
+
+## 10. Dependency audit (`npm audit` in `backend/`)
 **Status: resolved with an override (0 vulnerabilities).** Original finding: 3 **high** findings, all from one advisory chain
 
 | Package | Installed | Advisory | Affected range | First patched |
@@ -179,7 +264,7 @@ Checklists (keyed by real event id, in browser memory, reset on reload), notific
 - **Official fix = Prisma 7.10.1 (stable) is NOT a drop-in upgrade.** Tested on a scratch copy: it clears the audit, but `prisma validate` rejects the current schema (`datasource url` is no longer allowed; a `prisma.config.ts` and a driver adapter for `PrismaClient` are required). Treat it as a planned migration with CLI + Client upgraded together. `npm audit fix --force` would jump to a 8.0.0 release candidate and must not be used.
 - **Applied remediation:** Prisma stays at 6.19.3 (CLI, Client and schema unchanged) and `backend/package.json` now has `"overrides": { "deepmerge-ts": "^8.0.2" }`. `npm audit` reports **0 vulnerabilities**; `prisma validate`, `generate`, `migrate deploy` (both migrations, on a real PostgreSQL) and the full backend test suite all pass with it. Revisit when you migrate to Prisma 7 (the override can then be removed).
 
-## 10. Known limitations / next steps (Day 4+)
+## 11. Known limitations / next steps
 - **Day 4:** the departure calculation engine (the dashboard still derives leave/prepare times with the simple formulas from Day 1) and checklist persistence.
 - Checklists and notifications are still temporary client state; weather/maps/traffic and push notifications are not implemented.
 - Recurrence limits are listed in §8 (no monthly rules, no single-occurrence edits).

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/hooks/useAuth'
 import { ApiError, fieldErrorsFrom } from '@/lib/apiClient'
+import { resendVerificationRequest } from '@/services/authApi'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -18,6 +19,8 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '', remember: false })
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
+  const [needsVerification, setNeedsVerification] = useState(false)
+  const [resent, setResent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (e) => {
@@ -27,6 +30,8 @@ export default function LoginPage() {
     if (!form.password) next.password = 'Enter your password.'
     setErrors(next)
     setFormError('')
+    setNeedsVerification(false)
+    setResent(false)
     if (Object.keys(next).length > 0) return
 
     setSubmitting(true)
@@ -37,11 +42,18 @@ export default function LoginPage() {
       if (err instanceof ApiError) {
         setErrors(fieldErrorsFrom(err))
         setFormError(err.message)
+        // Only new accounts created while verification is mandatory are blocked; the password was correct.
+        setNeedsVerification(err.code === 'EMAIL_NOT_VERIFIED')
       } else {
         setFormError('Something went wrong. Please try again.')
       }
       setSubmitting(false)
     }
+  }
+
+  const resend = async () => {
+    await resendVerificationRequest(form.email.trim()).catch(() => {})
+    setResent(true)
   }
 
   return (
@@ -59,6 +71,18 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         {formError && <Alert>{formError}</Alert>}
+        {needsVerification && (
+          <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm">
+            <p className="font-medium text-brand-800">We sent a verification link to your email when you signed up. Open it, then log in.</p>
+            {resent ? (
+              <p role="status" className="font-semibold text-accent-700">If this account still needs verification, a new link is on its way.</p>
+            ) : (
+              <Button type="button" variant="outline" size="sm" onClick={resend}>
+                Resend verification email
+              </Button>
+            )}
+          </div>
+        )}
         <FormInput
           label="Email"
           type="email"
@@ -84,9 +108,9 @@ export default function LoginPage() {
             <Checkbox checked={form.remember} onChange={(e) => setForm({ ...form, remember: e.target.checked })} />
             Remember me
           </label>
-          <a href="#forgot" onClick={(e) => e.preventDefault()} className="text-sm font-semibold text-brand-700 hover:underline">
+          <Link to="/forgot-password" className="text-sm font-semibold text-brand-700 hover:underline">
             Forgot password?
-          </a>
+          </Link>
         </div>
         <Button type="submit" size="lg" className="w-full" disabled={submitting}>
           {submitting ? 'Logging in…' : 'Log in'}

@@ -5,7 +5,7 @@ import { env } from './config/env.js'
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js'
 import { createAuthRouter } from './routes/auth.routes.js'
 import eventRoutes from './routes/event.routes.js'
-import userRoutes from './routes/user.routes.js'
+import { createUserRouter } from './routes/user.routes.js'
 
 /** App factory (no listen) so tests can create isolated instances with their own options. */
 export function createApp(options = {}) {
@@ -19,7 +19,7 @@ export function createApp(options = {}) {
 
   app.get('/api/health', (_req, res) => res.json({ success: true, message: 'ok', data: {} }))
   app.use('/api/auth', createAuthRouter(options))
-  app.use('/api/users', userRoutes)
+  app.use('/api/users', createUserRouter(options))
   app.use('/api/events', eventRoutes)
 
   app.use(notFoundHandler)

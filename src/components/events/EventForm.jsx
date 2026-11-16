@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { MapPin } from 'lucide-react'
 import { Alert } from '@/components/common/Alert'
 import { FormInput } from '@/components/common/FormInput'
@@ -23,6 +23,8 @@ export function EventForm({ initial, submitLabel, onSubmit, onCancel }) {
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const inFlight = useRef(false)
+  // ~430 zone names: build the option list once, not on every keystroke.
+  const zoneOptions = useMemo(() => timezoneOptions(initial.timezone), [initial.timezone])
 
   const set = (key) => (e) => {
     const value = e.target.value
@@ -80,7 +82,7 @@ export function EventForm({ initial, submitLabel, onSubmit, onCancel }) {
           <FormInput label="Destination" icon={MapPin} placeholder="Building, address or place" value={form.destination} error={errors.destination} onChange={set('destination')} />
           <FormInput label="Event date" type="date" required value={form.date} error={errors.date} onChange={set('date')} />
           <FormInput label="Start time" type="time" required value={form.startTime} error={errors.startTime} onChange={set('startTime')} />
-          <FormSelect className="sm:col-span-2" label="Timezone" options={timezoneOptions(form.timezone)} value={form.timezone} error={errors.timezone} hint="The date and time above are in this timezone." onChange={set('timezone')} />
+          <FormSelect className="sm:col-span-2" label="Timezone" options={zoneOptions} value={form.timezone} error={errors.timezone} hint="The date and time above are in this timezone." onChange={set('timezone')} />
           <FormInput label="Travel duration" type="number" inputMode="numeric" min="1" required suffix="min" placeholder="35" value={form.travelMinutes} error={errors.travelMinutes} onChange={set('travelMinutes')} />
           <FormInput label="Preparation time" type="number" inputMode="numeric" min="0" required suffix="min" value={form.prepMinutes} error={errors.prepMinutes} hint="Time you need to get ready." onChange={set('prepMinutes')} />
           <FormInput label="Arrival buffer" type="number" inputMode="numeric" min="0" required suffix="min" value={form.bufferMinutes} error={errors.bufferMinutes} hint="How early you want to arrive." onChange={set('bufferMinutes')} />

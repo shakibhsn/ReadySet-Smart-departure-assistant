@@ -4,12 +4,13 @@ import { getToken } from './tokenStorage'
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4100/api').replace(/\/$/, '')
 
 export class ApiError extends Error {
-  constructor(message, { status = 0, errors = [], isNetworkError = false } = {}) {
+  constructor(message, { status = 0, errors = [], isNetworkError = false, code = null } = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.errors = errors
     this.isNetworkError = isNetworkError
+    this.code = code // machine-readable reason from the backend, e.g. TOKEN_EXPIRED, EMAIL_NOT_VERIFIED
   }
 }
 
@@ -47,6 +48,7 @@ export async function apiRequest(path, { method = 'GET', body, auth = true } = {
     throw new ApiError(payload?.message ?? 'Something went wrong. Please try again.', {
       status: response.status,
       errors: payload?.errors ?? [],
+      code: payload?.code ?? null,
     })
   }
   return payload

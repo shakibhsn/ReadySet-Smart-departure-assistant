@@ -5,7 +5,6 @@ import { addDays, format, getISODay } from 'date-fns'
 import { MemoryRouter } from 'react-router-dom'
 import AppRoutes from '@/routes'
 import { AuthProvider } from '@/components/common/AuthProvider'
-import { UserScopedAppState } from '@/components/common/UserScopedAppState'
 import { getToken, setToken } from '@/lib/tokenStorage'
 import { createFakeApi } from './fakeApi'
 
@@ -43,9 +42,9 @@ function setup({ path = '/', events, signedInAs = 'token-a' } = {}) {
   render(
     <MemoryRouter initialEntries={[path]}>
       <AuthProvider>
-        <UserScopedAppState>
+        
           <AppRoutes />
-        </UserScopedAppState>
+        
       </AuthProvider>
     </MemoryRouter>,
   )
@@ -132,7 +131,7 @@ describe('Create Event form -> API', () => {
     setToken('token-a')
     render(
       <MemoryRouter initialEntries={['/events/new']}>
-        <AuthProvider><UserScopedAppState><AppRoutes /></UserScopedAppState></AuthProvider>
+        <AuthProvider><AppRoutes /></AuthProvider>
       </MemoryRouter>,
     )
     const u = userEvent.setup()
@@ -215,7 +214,7 @@ describe('My Schedule shows database events', () => {
     api.override((method, path) => (fail && path === '/events/occurrences' ? api.respond(500, { success: false, message: 'Something went wrong. Please try again later.', errors: [] }) : undefined))
     api.install()
     setToken('token-a')
-    render(<MemoryRouter initialEntries={['/schedule']}><AuthProvider><UserScopedAppState><AppRoutes /></UserScopedAppState></AuthProvider></MemoryRouter>)
+    render(<MemoryRouter initialEntries={['/schedule']}><AuthProvider><AppRoutes /></AuthProvider></MemoryRouter>)
     const u = userEvent.setup()
     expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong')
     fail = false
@@ -228,7 +227,7 @@ describe('My Schedule shows database events', () => {
     api.override((method, path) => (path.startsWith('/events') ? api.respond(401, { success: false, message: 'Session expired. Please log in again.', errors: [] }) : undefined))
     api.install()
     setToken('token-a')
-    render(<MemoryRouter initialEntries={['/schedule']}><AuthProvider><UserScopedAppState><AppRoutes /></UserScopedAppState></AuthProvider></MemoryRouter>)
+    render(<MemoryRouter initialEntries={['/schedule']}><AuthProvider><AppRoutes /></AuthProvider></MemoryRouter>)
     expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument()
     expect(getToken()).toBeNull()
   })
@@ -321,7 +320,7 @@ describe('Dashboard shows real events', () => {
     api.override((method, path) => (path === '/events/upcoming' ? api.respond(500, { success: false, message: 'Something went wrong. Please try again later.', errors: [] }) : undefined))
     api.install()
     setToken('token-a')
-    render(<MemoryRouter initialEntries={['/']}><AuthProvider><UserScopedAppState><AppRoutes /></UserScopedAppState></AuthProvider></MemoryRouter>)
+    render(<MemoryRouter initialEntries={['/']}><AuthProvider><AppRoutes /></AuthProvider></MemoryRouter>)
     expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong')
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })

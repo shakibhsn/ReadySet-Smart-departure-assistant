@@ -7,6 +7,8 @@ import { Avatar } from '@/components/layout/Avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
+import { EmailNotificationsCard } from '@/components/settings/EmailNotificationsCard'
+import { EmailSecurityCard } from '@/components/settings/EmailSecurityCard'
 import { useAppState } from '@/hooks/useAppState'
 import { useAuth } from '@/hooks/useAuth'
 import { ApiError, fieldErrorsFrom } from '@/lib/apiClient'
@@ -97,6 +99,7 @@ export default function SettingsPage() {
   }
 
   return (
+    <div className="space-y-6">
     <form onSubmit={handleSave} noValidate className="space-y-6">
       <PageHeader
         title="Settings"
@@ -187,5 +190,11 @@ export default function SettingsPage() {
         </Section>
       </div>
     </form>
+
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <EmailSecurityCard />
+      <EmailNotificationsCard />
+    </div>
+    </div>
   )
 }
