@@ -260,31 +260,50 @@ export async function getUpcoming(userId, { limit }) {
   return { events: items.slice(0, limit).map(({ event, at }) => toPublicEvent(event, event.isRecurring ? at : null)) }
 }
 
-/** All occurrences of the user's events inside [from, to], recurring series expanded. */
-export async function getOccurrences(userId, query) {
-  const { gte, lte } = await resolveRange(query, userId)
-  if ((lte - gte) / 86_400_000 > MAX_RANGE_DAYS) throw fieldError('to', `Range cannot exceed ${MAX_RANGE_DAYS} days`)
-  const categoryFilter = query.category ? { category: query.category } : {}
-
+/**
+ * Raw occurrences (event row + exact start instant) of one user's events inside [from, to], recurring
+ * series expanded, single events included, sorted by start. Shared by the occurrences endpoint and
+ * the departure-plan service, so recurrence expansion exists in exactly one place.
+ * Scoped by userId like every other query in this file.
+ */
+export async function listOccurrenceRecords(userId, from, to, { category } = {}) {
+  const categoryFilter = category ? { category } : {}
   const [single, recurring] = await Promise.all([
-    prisma.event.findMany({ where: { userId, ...categoryFilter, recurrenceRuleId: null, startAt: { gte, lte } }, include: withRule, take: 500 }),
+    prisma.event.findMany({ where: { userId, ...categoryFilter, recurrenceRuleId: null, startAt: { gte: from, lte: to } }, include: withRule, take: 500 }),
     prisma.event.findMany({
       where: {
         userId,
         ...categoryFilter,
         recurrenceRuleId: { not: null },
-        startAt: { lte },
-        recurrenceRule: { OR: [{ endsAt: null }, { endsAt: { gte } }] },
+        startAt: { lte: to },
+        recurrenceRule: { OR: [{ endsAt: null }, { endsAt: { gte: from } }] },
       },
       include: withRule,
       take: 200,
     }),
   ])
 
-  const items = single.map((e) => ({ event: e, at: e.startAt }))
-  for (const e of recurring) {
-    for (const at of expandOccurrences(seriesOf(e), gte, lte)) items.push({ event: e, at })
+  const items = single.map((event) => ({ event, at: event.startAt }))
+  for (const event of recurring) {
+    for (const at of expandOccurrences(seriesOf(event), from, to)) items.push({ event, at })
   }
   items.sort((a, b) => a.at - b.at || a.event.id.localeCompare(b.event.id))
+  return items
+}
+
+/** All occurrences of the user's events inside [from, to], recurring series expanded. */
+export async function getOccurrences(userId, query) {
+  const { gte, lte } = await resolveRange(query, userId)
+  if ((lte - gte) / 86_400_000 > MAX_RANGE_DAYS) throw fieldError('to', `Range cannot exceed ${MAX_RANGE_DAYS} days`)
+  const items = await listOccurrenceRecords(userId, gte, lte, { category: query.category })
   return { events: items.map(({ event, at }) => toPublicEvent(event, event.isRecurring ? at : null)) }
 }
+
+/** Single owned event row (with its recurrence rule) or a 404. Used by the departure-plan service. */
+export async function findOwnedEvent(userId, id) {
+  const event = await prisma.event.findFirst({ where: { id, userId }, include: withRule })
+  if (!event) throw notFound()
+  return event
+}
+
+export { seriesOf }

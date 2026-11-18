@@ -4,7 +4,7 @@
 
 ReadySet works backwards from an event to tell you when to start preparing and when to leave.
 
-**Status:** events (Day 3) plus a complete transactional **email system** (email verification, password reset, email change, reminders, preferences): see §9.
+**Status:** events (Day 3), a transactional **email system** (§10) and the **Smart Departure Engine** (§9: formulas, timezone-safe calculation, live status/countdown).
 Events live in PostgreSQL. Checklists, notifications and weather are still temporary/mock data (see §8).
 
 ```
@@ -87,7 +87,8 @@ All responses: `{ success, message, data }` or `{ success: false, message, error
 | `POST /api/auth/login` | – | `email, password` → 200 `{ user, token }`; 401 generic "Invalid email or password" |
 | `GET /api/auth/me` | Bearer | user + preferences |
 | `POST /api/auth/logout` | Bearer | Revokes every token issued so far for the account (see §5) |
-| Email endpoints (verify, resend, forgot/reset password, email change, email preferences) | see §9 | |
+| Departure engine: `GET /api/events/:id/departure-plan`, `POST /api/departure/preview`, `GET /api/departure/today`, `GET /api/departure/upcoming` | Bearer | see §9 |
+| Email endpoints (verify, resend, forgot/reset password, email change, email preferences) | see §10 | |
 | `GET / PATCH /api/users/me` | Bearer | PATCH accepts `name` only |
 | `GET / PATCH /api/users/me/preferences` | Bearer | `defaultPreparationMinutes` (0–600), `defaultArrivalBufferMinutes` (0–240), `preferredTravelMode` (`manual\|walk\|transit\|drive\|bike`), `timezone` (IANA) |
 | `POST /api/events` | Bearer | Create (201). `userId` is never accepted; it comes from the JWT |
@@ -109,8 +110,8 @@ All responses: `{ success, message, data }` or `{ success: false, message, error
 ## 6. Testing
 - **Backend** (`npm run test:api`): registration (valid, missing fields, bad email, weak password, mismatch, duplicate, hashed storage), login (valid, wrong password, unknown email, missing fields, 429 rate limit), JWT (missing/invalid/`alg:none`/expired/valid/deleted user), profile & preference validation, and **user A vs user B isolation**. Tests only delete rows with `@readyset.test` emails and only in a `*_test` database.
   Day 3 adds `tests/events.test.js` (80 API tests on a real PostgreSQL: validation matrix, CRUD, pagination with stable order, category/date filters, upcoming, occurrences, recurrence rule storage/replace/remove, cascade deletes, and two-user isolation for read/update/delete/upcoming) and `tests/recurrence.test.js` (12 pure tests: daily, weekly, intervals, end dates, no duplicates, DST, timezone parsing).
-- **Frontend** (`npm test`, 65 tests): auth forms, protected routes, session restore, logout, `events.test.jsx` (stateful fake API: create/edit/delete, filters, pagination, empty/error/expired states, per-user state) and `email.test.jsx` (verification banner and Settings status/resend, login `EMAIL_NOT_VERIFIED` notice, mandatory-verification registration, forgot-password and reset-password forms incl. loading/success/expired/used/invalid states, verify and confirm-email-change links submitted exactly once, email-preference switches incl. revert on failure, change-email form).
-  The email system adds `tests/email.test.js` (registration email, verification/resend/forgot/reset/email-change flows, expired/reused tokens, rate limits, backward compatibility for pre-existing users, mandatory mode, preferences authorization/isolation), `tests/emailService.test.js` (retry/backoff/idempotency, duplicate guard, Resend error mapping, console mode, startup config failures, template escaping) and `tests/reminders.test.js` (departure maths, timing/grace/preferences rules, sweep with dedupe, event edits/deletes, recurrence). **All use a mock mailbox: automated tests can never send real email** (`EMAIL_MODE=provider` is refused under `NODE_ENV=test`). 211 backend tests in total.
+- **Frontend** (`npm test`, 99 tests): auth forms, protected routes, session restore, logout, `events.test.jsx` (stateful fake API: create/edit/delete, filters, pagination, empty/error/expired states, per-user state) `departure.test.jsx` + `departureStatus.test.js` (Next Departure card with fake timers: countdown without network calls, local status advance with a single refetch, late/arrival/started warnings, hidden-tab pause and instant catch-up, Planner timeline, debounced what-if preview that saves nothing, loading/error/empty states, Event Details plan), and `email.test.jsx` (verification banner and Settings status/resend, login `EMAIL_NOT_VERIFIED` notice, mandatory-verification registration, forgot-password and reset-password forms incl. loading/success/expired/used/invalid states, verify and confirm-email-change links submitted exactly once, email-preference switches incl. revert on failure, change-email form).
+  The email system adds `tests/email.test.js` (registration email, verification/resend/forgot/reset/email-change flows, expired/reused tokens, rate limits, backward compatibility for pre-existing users, mandatory mode, preferences authorization/isolation), `tests/emailService.test.js` (retry/backoff/idempotency, duplicate guard, Resend error mapping, console mode, startup config failures, template escaping) and `tests/reminders.test.js` (departure maths, timing/grace/preferences rules, sweep with dedupe, event edits/deletes, recurrence). **All use a mock mailbox: automated tests can never send real email** (`EMAIL_MODE=provider` is refused under `NODE_ENV=test`). Day 4 adds `tests/departure.test.js` (30 pure calculator/status/validation tests: the required examples, midnight rollover, other timezones, daylight saving, every status boundary, fallbacks) and `tests/departureApi.test.js` (42 API tests: ownership/isolation, exact plans, statuses, recurrence without duplicates, preview side-effects, fallbacks, validation, sorting, route order). 283 backend tests in total.
 - **Known tooling flake (Windows):** the Vitest *worker process* sometimes dies with exit code `3221226505` (`0xC0000409`), at startup or mid-run, with no assertion failure. It only reproduced on database-backed tests, and it is **not** caused by the native `bcrypt` addon (swapping in pure-JS `bcryptjs` still crashed, 3 of 10 runs). The cause was not found. `backend/scripts/run-tests.mjs` runs each test **file** in its own Vitest process and re-runs only that file (max 3 attempts) when its worker crashed, prints a warning when it does, and never retries an actual test failure.
 
 ## 7. Structure
@@ -168,7 +169,82 @@ Every event query in `event.service.js` filters by `userId` taken from the verif
 ### Still temporary (not in the database yet)
 Checklists (keyed by real event id, in browser memory, reset on reload), notifications (mock seed), weather (mock placeholder), and the reminder/theme switches.
 
-## 9. Email system
+## 9. Smart Departure Engine
+
+The calculation lives in the **backend** (`backend/src/services/departure/`) and is the single source of truth. The frontend shows the plans it returns and only re-derives the *visible countdown and status* from the returned timestamps.
+
+### Formulas
+```
+targetArrival        = eventStart    − arrivalBufferMinutes
+departureTime        = targetArrival − travelDurationMinutes
+preparationStart     = departureTime − preparationMinutes
+totalRequiredMinutes = preparationMinutes + travelDurationMinutes + arrivalBufferMinutes
+```
+Example: event 10:00 AM, travel 35, buffer 10, preparation 30 → prepare **8:45 AM**, leave **9:15 AM**, arrive by **9:50 AM**, event **10:00 AM** (75 minutes in total).
+
+> Spec note: the second example in the original requirements (3:00 PM, travel 60, buffer 15, preparation 45 → "12:00 / 12:45 / 2:45 PM") is arithmetically inconsistent with these formulas. With travel 60 the result is **1:00 PM / 1:45 PM / 2:45 PM**; the listed times correspond to travel = 120. Both variants are covered by tests (`tests/departure.test.js`, Tests 2 and 2b).
+
+### Architecture
+| File | Responsibility |
+|---|---|
+| `departureCalculator.js` | **Pure.** Formulas, duration validation, fallbacks (`resolveDurations`, `resolveTimezone`), local presentation. No database, Express or clock |
+| `departureStatus.js` | **Pure.** Status + explainable messages from the plan and an **injected `now`** |
+| `departureValidation.js` | Zod schemas for the API (preview body, query strings) |
+| `departurePlan.service.js` | Loads the user's real events (scoped by `userId`), builds the response shape, today/upcoming selection |
+| `controllers/departure.controller.js`, `routes/departure.routes.js` | HTTP layer; clock is read once per request and passed down |
+
+The reminder emails (`reminder.service.js`) call the same calculator, so there is exactly one implementation of the formulas in the backend. (The small preview inside the Create/Edit event form uses the same formulas client-side while you type; every other screen shows backend plans.)
+
+### Timezone strategy
+- All arithmetic uses **absolute instants** (UTC milliseconds). "35 minutes of travel" is 35 *elapsed* minutes, which stays correct across midnight and daylight-saving changes (tested for New York's spring-forward and fall-back).
+- The event's **IANA timezone** is used only to *present* instants (`local.*` fields: `date`, `time`, `time12`, ISO with offset) and to find local-day boundaries. Calculations never use formatted strings, and a local time is never reinterpreted as UTC.
+- Fallbacks: event timezone → user's saved timezone → `Asia/Dhaka` (the project default). Durations: explicit value → user preference → application default (30 min preparation, 10 min buffer). **Travel time has no fallback and is always required**: guessing it would make the plan misleading. Saved events are never overwritten.
+- A milestone that lands on a different local day than the event is explained ("10:55 PM (the day before)").
+
+### Status (derived only from the schedule and the current time)
+| Status | When |
+|---|---|
+| `UPCOMING` | now < preparation start |
+| `PREPARING` | preparation start ≤ now < departure time |
+| `READY_TO_LEAVE` | departure time ≤ now < target arrival (the message says how late you are and what leaving now means) |
+| `ARRIVAL_TARGET_PASSED` | target arrival ≤ now < event start |
+| `EVENT_STARTED` | now ≥ event start (also used for events long in the past) |
+
+Zero-length phases collapse (no preparation skips `PREPARING`; no buffer skips `ARRIVAL_TARGET_PASSED`). Countdown values are **never negative**. **`ON_THE_WAY` and `COMPLETED` are deliberately not implemented**: they need the user to say "I have left" / "done", and the app has no such action; time alone cannot prove either. There is also no cancelled/deleted-status field (deletes are hard deletes), so deleted events simply disappear.
+
+### Endpoints (all require a Bearer token; user id always comes from the JWT)
+| Endpoint | Behaviour |
+|---|---|
+| `GET /api/events/:id/departure-plan[?occurrence=ISO]` | Plan for one of **your** events (404 for missing or someone else's). Recurring events default to the next occurrence; `occurrence` selects an exact one (400 if it is not an occurrence) |
+| `POST /api/departure/preview` | What-if calculation, **saves nothing**. Body: `startAt` (local `YYYY-MM-DDTHH:mm` in `timezone`, or an ISO instant), `travelDurationMinutes` (1–1440, required), optional `timezone`, `preparationMinutes`, `arrivalBufferMinutes` (0–1440; fall back as above). Unknown fields are rejected |
+| `GET /api/departure/today[?timezone=]` | Plans relevant on the user's **local** day: the event starts today (or is running) and its preparation begins before today ends, so a 00:30 event whose preparation starts at 22:30 the evening before is included. Sorted by departure time |
+| `GET /api/departure/upcoming?days=7&limit=20` | Upcoming occurrences (`days` 1–30, `limit` 1–100) sorted by **departure time**, recurring events expanded once per occurrence (no duplicates) |
+
+Response (all timestamps are UTC ISO strings):
+```json
+{
+  "event": { "id": "…", "title": "University Class", "startAt": "2026-11-20T04:00:00.000Z", "timezone": "Asia/Dhaka", "destination": "…", "isRecurring": false },
+  "plan": { "preparationStart": "…02:45Z", "departureTime": "…03:15Z", "targetArrival": "…03:50Z", "eventStart": "…04:00Z" },
+  "local": { "timezone": "Asia/Dhaka", "preparationStart": { "date": "2026-11-20", "time": "08:45", "time12": "8:45 AM", "iso": "…+06:00" }, "…": "…" },
+  "durations": { "preparationMinutes": 30, "travelDurationMinutes": 35, "arrivalBufferMinutes": 10, "totalRequiredMinutes": 75 },
+  "status": "UPCOMING",
+  "readiness": { "message": "Preparation starts at 8:45 AM, in 3 h 15 min. …", "nextMilestone": { "key": "preparationStart", "label": "Preparation starts", "at": "…", "secondsUntil": 11700 }, "minutesPastDeparture": 0, "projectedArrival": "…" },
+  "explanation": "Start preparing at 8:45 AM and leave at 9:15 AM to arrive 10 minutes before your event.",
+  "calculatedAt": "…"
+}
+```
+Internal fields (`userId`, rule ids) are never exposed. `/api/departure/*` is a separate router, and `/:id/departure-plan` is declared with the other fixed event paths, so nothing conflicts with the existing dynamic routes.
+
+### Frontend behaviour
+- **Dashboard** Next Departure card: next plan by departure time, times in the event's timezone, status badge, countdown to the next milestone, explanation, late/started warnings, **View Departure Plan** CTA; empty state with *Create event*; loading and error states with retry.
+- **Departure Planner**: pick a saved event (or `?event=`), see the backend plan, formula cards and a 4-step **timeline**; change travel / preparation / buffer for a **what-if preview** (debounced, one request per settled input, clearly labelled "Preview only", never saved, with *Reset to saved values*); "Custom plan" mode for any date/time/timezone.
+- **Event details**: *View Departure Plan* action and the plan for the event's saved values.
+- **Countdown**: computed from the plan's timestamps with one 1-second timer (`useNow`), **no per-second API calls**, paused while the tab is hidden and corrected instantly when it becomes visible. When the derived status moves past the server's, the plan is refetched **once**; creating/editing/deleting events refetches plans automatically.
+
+### Limitations
+No live traffic, weather, maps or GPS (later milestones). Plans use the saved travel time as a fixed estimate. The message wording is generated by the server at `calculatedAt`; between refetches the UI shows generic wording for a new status. No cancelled / completed / departed states (see above).
+
+## 10. Email system
 
 ### Architecture
 ```
@@ -251,7 +327,7 @@ Implement `{ name, send({ to, from, subject, html, text, idempotencyKey }) }` (t
 ### Known limitations
 No bounce/complaint/delivery webhooks (so "delivered" is unknown); the email queue is in memory; password changes while logged in (a "change password" settings form) are not implemented, only reset-by-email; reminder defaults (60 min upcoming lead, 30 min grace) are constants; reminders for several thousand opted-in users would need batching; no email unsubscribe link (preferences are in Settings).
 
-## 10. Dependency audit (`npm audit` in `backend/`)
+## 11. Dependency audit (`npm audit` in `backend/`)
 **Status: resolved with an override (0 vulnerabilities).** Original finding: 3 **high** findings, all from one advisory chain
 
 | Package | Installed | Advisory | Affected range | First patched |
@@ -264,13 +340,13 @@ No bounce/complaint/delivery webhooks (so "delivered" is unknown); the email que
 - **Official fix = Prisma 7.10.1 (stable) is NOT a drop-in upgrade.** Tested on a scratch copy: it clears the audit, but `prisma validate` rejects the current schema (`datasource url` is no longer allowed; a `prisma.config.ts` and a driver adapter for `PrismaClient` are required). Treat it as a planned migration with CLI + Client upgraded together. `npm audit fix --force` would jump to a 8.0.0 release candidate and must not be used.
 - **Applied remediation:** Prisma stays at 6.19.3 (CLI, Client and schema unchanged) and `backend/package.json` now has `"overrides": { "deepmerge-ts": "^8.0.2" }`. `npm audit` reports **0 vulnerabilities**; `prisma validate`, `generate`, `migrate deploy` (both migrations, on a real PostgreSQL) and the full backend test suite all pass with it. Revisit when you migrate to Prisma 7 (the override can then be removed).
 
-## 11. Known limitations / next steps
-- **Day 4:** the departure calculation engine (the dashboard still derives leave/prepare times with the simple formulas from Day 1) and checklist persistence.
+## 12. Known limitations / next steps
+- **Next:** checklist persistence (checklists are still temporary client state). Departure plans use the saved travel time as a fixed estimate; live traffic, weather and maps are later milestones (see §9 limitations).
 - Checklists and notifications are still temporary client state; weather/maps/traffic and push notifications are not implemented.
 - Recurrence limits are listed in §8 (no monthly rules, no single-occurrence edits).
 - The Dashboard "Today" uses the user's saved timezone while the Schedule calendar uses the browser's calendar days; they only differ if the browser and saved timezone differ.
-- No email verification, password reset, email change, or avatar upload (UI placeholders only).
+- Avatar upload is a UI placeholder. Email verification, password reset and email change are implemented (§10).
 - No refresh tokens or per-device sessions: logout ends all sessions of the account (see §5). Rate limiting is in-memory per process; use a shared store when running multiple instances.
 - Reminder switches and theme are saved on the device only.
 - The Windows Vitest worker flake in §6 is worked around, not root-caused.
-- Dependency audit: see §9 (0 vulnerabilities with the override).
+- Dependency audit: see §11 (0 vulnerabilities with the override).

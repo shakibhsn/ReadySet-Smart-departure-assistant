@@ -3,6 +3,7 @@ import { emailConfig } from '../config/email.config.js'
 import { logger } from '../utils/logger.js'
 import { eventReminderTemplate } from '../templates/eventReminderTemplate.js'
 import { queueEmail } from './email/emailService.js'
+import { calculateDeparturePlan, resolveTimezone } from './departure/departureCalculator.js'
 import { expandOccurrences } from './recurrence.service.js'
 
 /**
@@ -30,10 +31,15 @@ export const SWEEP_INTERVAL_MS = 60_000
 const MIN = 60_000
 
 export function departurePlan(event, start) {
-  const targetArrival = new Date(start.getTime() - event.arrivalBufferMinutes * MIN)
-  const departure = new Date(targetArrival.getTime() - event.travelDurationMinutes * MIN)
-  const prepStart = new Date(departure.getTime() - event.preparationMinutes * MIN)
-  return { targetArrival, departure, prepStart }
+  // Single source of truth: the departure calculator. (Kept returning the short names the reminders use.)
+  const p = calculateDeparturePlan({
+    startAt: start,
+    timezone: resolveTimezone(event.timezone), // events always have one; the shared fallback chain covers partial objects
+    travelDurationMinutes: event.travelDurationMinutes,
+    preparationMinutes: event.preparationMinutes,
+    arrivalBufferMinutes: event.arrivalBufferMinutes,
+  })
+  return { targetArrival: p.targetArrival, departure: p.departureTime, prepStart: p.preparationStart }
 }
 
 /**

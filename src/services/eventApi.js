@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/apiClient'
+import { queryString as query } from '@/lib/queryString'
 
 /**
  * HOW DATE-TIMES TRAVEL BETWEEN FRONTEND AND BACKEND
@@ -11,15 +12,6 @@ import { apiRequest } from '@/lib/apiClient'
  *  - Filters (`from` / `to`): "yyyy-MM-dd" days are interpreted by the server in the user's
  *    saved timezone (or `timezone` when given).
  */
-
-const query = (params = {}) => {
-  const qs = new URLSearchParams()
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== '') qs.set(key, String(value))
-  }
-  const s = qs.toString()
-  return s ? `?${s}` : ''
-}
 
 /** Adds the field names the existing UI components already use (date, startTime, travelMinutes...). */
 export function normalizeEvent(e) {

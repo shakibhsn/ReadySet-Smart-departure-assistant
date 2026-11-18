@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { fakePlanView } from './planFixture'
 
 /**
  * A small stateful fake of the ReadySet backend for frontend tests.
@@ -39,6 +40,11 @@ export function createFakeApi({ users, events = {} }) {
   }
 
   const sorted = (list) => [...list].sort((a, b) => a.startAt.localeCompare(b.startAt))
+
+  // Controllable clock (defaults to the real/fake-timer Date.now()).
+  let clock = null
+  const now = () => clock ?? Date.now()
+  const planView = (event, startIso) => fakePlanView(event, startIso, now())
 
   const handle = (url, init = {}) => {
     const u = new URL(url)
@@ -88,6 +94,26 @@ export function createFakeApi({ users, events = {} }) {
       const to = u.searchParams.get('to')
       return ok({ events: sorted(mine).filter((e) => (!category || e.category === category) && e.localDate >= from && e.localDate <= to) })
     }
+    // ---- departure engine (simplified mirror of the backend response shape) ----
+    if (path === '/departure/upcoming') {
+      const limit = Number(u.searchParams.get('limit') ?? 20)
+      const views = sorted(mine).map((e) => planView(e, e.startAt)).filter((v) => new Date(v.plan.eventStart) >= new Date(now()))
+      views.sort((a, b) => a.plan.departureTime.localeCompare(b.plan.departureTime))
+      return ok({ from: new Date(now()).toISOString(), to: null, plans: views.slice(0, limit) })
+    }
+    if (path === '/departure/today') return ok({ date: null, timezone: 'Asia/Dhaka', plans: [] })
+    if (path === '/departure/preview' && method === 'POST') {
+      if (body.travelDurationMinutes < 1) return respond(400, { success: false, message: 'Validation failed', errors: [{ field: 'travelDurationMinutes', message: 'Travel duration must be at least 1 minute' }] })
+      const asEvent = { id: null, title: null, timezone: body.timezone ?? 'Asia/Dhaka', travelDurationMinutes: body.travelDurationMinutes, preparationMinutes: body.preparationMinutes ?? 30, arrivalBufferMinutes: body.arrivalBufferMinutes ?? 10 }
+      const startIso = /Z$|[+-]\d\d:\d\d$/.test(body.startAt) ? new Date(body.startAt).toISOString() : `${body.startAt}:00.000Z`
+      return ok(planView(asEvent, startIso))
+    }
+    const planMatch = path.match(/^\/events\/([^/]+)\/departure-plan$/)
+    if (planMatch) {
+      const found = mine.find((e) => e.id === planMatch[1])
+      if (!found) return respond(404, { success: false, message: 'Event not found', errors: [] })
+      return ok(planView(found, u.searchParams.get('occurrence') ?? found.startAt))
+    }
     const match = path.match(/^\/events\/([^/]+)$/)
     if (match) {
       const index = mine.findIndex((e) => e.id === match[1])
@@ -108,6 +134,8 @@ export function createFakeApi({ users, events = {} }) {
   const fetchMock = vi.fn(handle)
   return {
     fetchMock,
+    /** Freeze the fake server clock at a Date (or null for the real clock). */
+    setNow: (date) => { clock = date ? new Date(date).getTime() : null },
     install: () => vi.stubGlobal('fetch', fetchMock),
     calls,
     events: (token) => (db[token] ??= []),

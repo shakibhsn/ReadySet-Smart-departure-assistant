@@ -15,6 +15,7 @@ import { useAppState } from '@/hooks/useAppState'
 import { useAuth } from '@/hooks/useAuth'
 import { useEventQuery } from '@/hooks/useEventQuery'
 import { mockWeather } from '@/data/weather'
+import { getUpcomingPlans } from '@/services/departureApi'
 import { getEvents, getOccurrences, getUpcomingEvents } from '@/services/eventApi'
 import { getProgress } from '@/utils/events'
 import { todayKey } from '@/utils/format'
@@ -43,14 +44,17 @@ export default function DashboardPage() {
   const upcoming = useEventQuery(() => getUpcomingEvents({ limit: 6 }), [])
   const todays = useEventQuery(() => getOccurrences({ from: today, to: today, timezone }), [today, timezone])
   const count = useEventQuery(() => getEvents({ limit: 1 }), [])
+  // The Next Departure card shows the plan calculated by the backend departure engine (sorted by departure time).
+  const plans = useEventQuery(() => getUpcomingPlans({ days: 14, limit: 3 }), [])
 
-  const queries = [upcoming, todays, count]
+  const queries = [upcoming, todays, count, plans]
   const failed = queries.find((q) => q.error)
   const initialLoad = queries.some((q) => q.loading && !q.data)
 
   const now = new Date()
   const upcomingEvents = upcoming.data ?? []
-  const nextEvent = upcomingEvents[0]
+  const nextPlan = plans.data?.plans[0] ?? null
+  const nextEvent = nextPlan?.event ?? null // checklist / readiness cards follow the same event
   const total = count.data?.pagination.total ?? 0
   const items = nextEvent ? (checklists[nextEvent.id] ?? []) : []
   const progress = getProgress(items)
@@ -78,7 +82,7 @@ export default function DashboardPage() {
         <LoadingSkeleton />
       ) : (
         <>
-          <NextDepartureCard event={nextEvent} />
+          <NextDepartureCard plan={nextPlan} onRefresh={plans.reload} />
 
           <div className="grid gap-4 sm:grid-cols-3">
             <QuickActionCard to="/events/new" icon={CalendarPlus} title="Create event" description="Add something new" />

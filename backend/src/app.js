@@ -4,6 +4,7 @@ import helmet from 'helmet'
 import { env } from './config/env.js'
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js'
 import { createAuthRouter } from './routes/auth.routes.js'
+import departureRoutes from './routes/departure.routes.js'
 import eventRoutes from './routes/event.routes.js'
 import { createUserRouter } from './routes/user.routes.js'
 
@@ -21,6 +22,7 @@ export function createApp(options = {}) {
   app.use('/api/auth', createAuthRouter(options))
   app.use('/api/users', createUserRouter(options))
   app.use('/api/events', eventRoutes)
+  app.use('/api/departure', departureRoutes)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

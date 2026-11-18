@@ -1,55 +1,82 @@
 import { useState } from 'react'
-import { CalendarClock, Compass, Flag, Timer } from 'lucide-react'
-import { PageHeader } from '@/components/common/PageHeader'
+import { useSearchParams } from 'react-router-dom'
+import { CalendarClock, Compass, Flag, RotateCcw, Timer } from 'lucide-react'
+import { Alert } from '@/components/common/Alert'
+import { EmptyState } from '@/components/common/EmptyState'
 import { FormInput } from '@/components/common/FormInput'
 import { FormSelect } from '@/components/common/FormSelect'
-import { EmptyState } from '@/components/common/EmptyState'
-import { DeparturePreview } from '@/components/planner/DeparturePreview'
+import { LoadingSkeleton, Skeleton } from '@/components/common/LoadingSkeleton'
+import { PageHeader } from '@/components/common/PageHeader'
+import { timezoneOptions } from '@/components/events/eventFormUtils'
+import { DepartureTimeline } from '@/components/planner/DepartureTimeline'
+import { ReadinessPanel } from '@/components/planner/ReadinessPanel'
 import { ResultCard } from '@/components/planner/ResultCard'
-import { ButtonLink } from '@/components/ui/button'
+import { Button, ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAuth } from '@/hooks/useAuth'
+import { useEventQuery } from '@/hooks/useEventQuery'
 import { useUpcomingEventList } from '@/hooks/useEvents'
-import { Alert } from '@/components/common/Alert'
-import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
-import { calculateDeparture, formatClock, parseDateTime } from '@/utils/departure'
+import { useLiveReadiness } from '@/hooks/useLiveReadiness'
+import { usePreviewPlan } from '@/hooks/usePreviewPlan'
+import { getEventDeparturePlan } from '@/services/departureApi'
 import { sortEvents } from '@/utils/events'
-import { formatDayLabel, formatTime12 } from '@/utils/format'
+import { formatDayLabel, toDateKey } from '@/utils/format'
 
 const CUSTOM = 'custom'
+const isMinutes = (v, min) => v !== '' && Number.isInteger(Number(v)) && Number(v) >= min && Number(v) <= 1440
 
-function PlannerBody({ events }) {
+function PlannerBody({ events, initialId, initialOccurrence }) {
+  const { user } = useAuth()
+  const userTimezone = user?.preference?.timezone ?? 'Asia/Dhaka'
   const sorted = sortEvents(events)
-  const initial = sorted[0]
 
-  const [selectedId, setSelectedId] = useState(initial?.id ?? CUSTOM)
-  const [inputs, setInputs] = useState({
-    date: initial?.date ?? '',
-    startTime: initial?.startTime ?? '',
-    travelMinutes: String(initial?.travelMinutes ?? 30),
-    bufferMinutes: String(initial?.bufferMinutes ?? 10),
-    prepMinutes: String(initial?.prepMinutes ?? 30),
-  })
+  const [selectedId, setSelectedId] = useState(() => (sorted.some((e) => e.id === initialId) ? initialId : (sorted[0]?.id ?? CUSTOM)))
+  const [edits, setEdits] = useState({ travel: null, prep: null, buffer: null }) // null = keep the saved value
+  const [custom, setCustom] = useState({ date: toDateKey(), time: '10:00', timezone: userTimezone, travel: '35', prep: '30', buffer: '10' })
 
+  const isCustom = selectedId === CUSTOM
+  const event = isCustom ? null : sorted.find((e) => e.id === selectedId)
+  const occurrence = event?.isRecurring ? (event.id === initialId && initialOccurrence ? initialOccurrence : event.startAt) : undefined
+
+  // Saved plan from the backend, calculated from the stored event values.
+  const saved = useEventQuery(() => (event ? getEventDeparturePlan(event.id, occurrence ? { occurrence } : undefined) : Promise.resolve(null)), [selectedId, occurrence])
+
+  const savedValues = event ? { travel: String(event.travelMinutes), prep: String(event.prepMinutes), buffer: String(event.bufferMinutes) } : null
+  const values = isCustom
+    ? { travel: custom.travel, prep: custom.prep, buffer: custom.buffer }
+    : { travel: edits.travel ?? savedValues.travel, prep: edits.prep ?? savedValues.prep, buffer: edits.buffer ?? savedValues.buffer }
+  const modified = !isCustom && ['travel', 'prep', 'buffer'].some((k) => values[k] !== savedValues[k])
+
+  const errors = {}
+  if (!isMinutes(values.travel, 1)) errors.travel = 'Enter 1–1440 minutes.'
+  if (!isMinutes(values.prep, 0)) errors.prep = 'Enter 0–1440 minutes.'
+  if (!isMinutes(values.buffer, 0)) errors.buffer = 'Enter 0–1440 minutes.'
+  if (isCustom && (!custom.date || !custom.time)) errors.when = 'Pick a date and time.'
+  const valid = Object.keys(errors).length === 0
+
+  // What-if preview: only for a custom plan or a saved event whose durations were edited.
+  const previewPayload =
+    valid && (isCustom || modified)
+      ? {
+          startAt: isCustom ? `${custom.date}T${custom.time}` : event.startAt,
+          timezone: isCustom ? custom.timezone : event.timezone,
+          travelDurationMinutes: Number(values.travel),
+          preparationMinutes: Number(values.prep),
+          arrivalBufferMinutes: Number(values.buffer),
+        }
+      : null
+  const preview = usePreviewPlan(previewPayload)
+
+  const showingPreview = Boolean(previewPayload)
+  const active = showingPreview ? preview : saved
+  const view = active.data
+  const { now, live, stale } = useLiveReadiness(view, showingPreview ? undefined : saved.reload)
+
+  const setValue = (key) => (e) => (isCustom ? setCustom((c) => ({ ...c, [key]: e.target.value })) : setEdits((s) => ({ ...s, [key]: e.target.value })))
   const selectEvent = (id) => {
     setSelectedId(id)
-    const e = events.find((ev) => ev.id === id)
-    if (e) {
-      setInputs({
-        date: e.date,
-        startTime: e.startTime,
-        travelMinutes: String(e.travelMinutes),
-        bufferMinutes: String(e.bufferMinutes),
-        prepMinutes: String(e.prepMinutes),
-      })
-    }
+    setEdits({ travel: null, prep: null, buffer: null })
   }
-
-  const set = (key) => (e) => setInputs((prev) => ({ ...prev, [key]: e.target.value }))
-
-  // Recomputed on every render, so any input change updates the results instantly.
-  const plan = calculateDeparture(parseDateTime(inputs.date, inputs.startTime), inputs)
-
-  const invalid = (v, min) => (v === '' || Number(v) < min ? `Minimum ${min}.` : undefined)
 
   return (
     <div className="space-y-6">
@@ -60,7 +87,7 @@ function PlannerBody({ events }) {
           <CardHeader>
             <div>
               <CardTitle>Plan inputs</CardTitle>
-              <CardDescription>Pick an event, or enter your own numbers.</CardDescription>
+              <CardDescription>Pick a saved event, or enter your own. Changing a duration previews a what-if without touching your event.</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -69,39 +96,68 @@ function PlannerBody({ events }) {
               label="Event"
               value={selectedId}
               onChange={(e) => selectEvent(e.target.value)}
-              options={[
-                ...sorted.map((e) => ({ value: e.id, label: `${e.title} · ${formatDayLabel(e.date)}` })),
-                { value: CUSTOM, label: 'Custom plan' },
-              ]}
+              options={[...sorted.map((e) => ({ value: e.id, label: `${e.title} · ${formatDayLabel(e.date)}` })), { value: CUSTOM, label: 'Custom plan' }]}
             />
-            <FormInput label="Event date" type="date" value={inputs.date} onChange={set('date')} />
-            <FormInput label="Event start time" type="time" value={inputs.startTime} onChange={set('startTime')} />
-            <FormInput label="Travel duration" type="number" inputMode="numeric" min="0" suffix="min" value={inputs.travelMinutes} error={invalid(inputs.travelMinutes, 0)} onChange={set('travelMinutes')} />
-            <FormInput label="Arrival buffer" type="number" inputMode="numeric" min="0" suffix="min" value={inputs.bufferMinutes} error={invalid(inputs.bufferMinutes, 0)} onChange={set('bufferMinutes')} />
-            <FormInput className="sm:col-span-2" label="Preparation time" type="number" inputMode="numeric" min="0" suffix="min" value={inputs.prepMinutes} error={invalid(inputs.prepMinutes, 0)} onChange={set('prepMinutes')} />
+            {isCustom && (
+              <>
+                <FormInput label="Event date" type="date" value={custom.date} error={errors.when} onChange={setValue('date')} />
+                <FormInput label="Event start time" type="time" value={custom.time} onChange={setValue('time')} />
+                <FormSelect className="sm:col-span-2" label="Timezone" options={timezoneOptions(custom.timezone)} value={custom.timezone} onChange={setValue('timezone')} />
+              </>
+            )}
+            <FormInput label="Travel duration" type="number" inputMode="numeric" min="1" suffix="min" value={values.travel} error={errors.travel} onChange={setValue('travel')} />
+            <FormInput label="Arrival buffer" type="number" inputMode="numeric" min="0" suffix="min" value={values.buffer} error={errors.buffer} onChange={setValue('buffer')} />
+            <FormInput className="sm:col-span-2" label="Preparation time" type="number" inputMode="numeric" min="0" suffix="min" value={values.prep} error={errors.prep} onChange={setValue('prep')} />
+            {modified && (
+              <Button variant="ghost" size="sm" className="justify-self-start sm:col-span-2" onClick={() => setEdits({ travel: null, prep: null, buffer: null })}>
+                <RotateCcw className="size-4" /> Reset to saved values
+              </Button>
+            )}
           </CardContent>
         </Card>
 
         <div className="space-y-6">
-          {!plan ? (
-            <EmptyState
-              icon={Compass}
-              title="Choose an event time"
-              description="Select an event or enter a date and start time to see your departure plan."
-              action={events.length === 0 && <ButtonLink to="/events/new">Create event</ButtonLink>}
-            />
+          {active.loading && !view ? (
+            <div role="status" aria-label="Calculating departure plan" className="space-y-4">
+              <Skeleton className="h-28" />
+              <Skeleton className="h-40" />
+            </div>
+          ) : active.error ? (
+            <Alert>
+              {active.error.status === 404 ? 'This event was not found.' : active.error.message}{' '}
+              {!showingPreview && (
+                <button type="button" onClick={saved.reload} className="font-bold underline">
+                  Try again
+                </button>
+              )}
+            </Alert>
+          ) : !valid ? (
+            <EmptyState icon={Compass} title="Check your inputs" description="Fix the highlighted fields to calculate your departure plan." />
+          ) : !view ? (
+            <EmptyState icon={Compass} title="Choose an event time" description="Select an event or enter a date and start time to see your departure plan." action={<ButtonLink to="/events/new">Create event</ButtonLink>} />
           ) : (
             <>
               <p className="flex items-center gap-2 text-sm text-muted">
                 <CalendarClock className="size-4" />
-                Event starts {formatDayLabel(inputs.date)} at {formatTime12(inputs.startTime)}
+                {view.event.title ?? 'Custom plan'}: starts {formatDayLabel(view.local.eventStart.date)} at {view.local.eventStart.time12} ({view.local.timezone})
               </p>
+              <ReadinessPanel view={view} live={live} stale={stale} preview={showingPreview} />
               <div className="grid gap-4 sm:grid-cols-3">
-                <ResultCard icon={Flag} label="Target arrival" time={formatClock(plan.targetArrival)} formula="Event time − arrival buffer" />
-                <ResultCard icon={Compass} label="Departure time" time={formatClock(plan.departure)} formula="Target arrival − travel duration" featured />
-                <ResultCard icon={Timer} label="Preparation start" time={formatClock(plan.prepStart)} formula="Departure time − preparation time" />
+                <ResultCard icon={Flag} label="Target arrival" time={view.local.targetArrival.time12} formula="Event time − arrival buffer" />
+                <ResultCard icon={Compass} label="Departure time" time={view.local.departureTime.time12} formula="Target arrival − travel duration" featured />
+                <ResultCard icon={Timer} label="Preparation start" time={view.local.preparationStart.time12} formula="Departure time − preparation time" />
               </div>
-              <DeparturePreview plan={plan} />
+              <Card>
+                <CardHeader>
+                  <div>
+                    <CardTitle>Your timeline</CardTitle>
+                    <CardDescription>{view.durations.totalRequiredMinutes} minutes needed in total</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <DepartureTimeline view={view} now={showingPreview ? undefined : now} />
+                </CardContent>
+              </Card>
             </>
           )}
         </div>
@@ -111,15 +167,18 @@ function PlannerBody({ events }) {
 }
 
 export default function PlannerPage() {
+  const [params] = useSearchParams()
   const { events, data, error, loading, reload } = useUpcomingEventList()
   if (loading && !data) return <LoadingSkeleton cards={2} />
   if (error) {
     return (
       <Alert>
         {error.message}{' '}
-        <button type="button" onClick={reload} className="font-bold underline">Try again</button>
+        <button type="button" onClick={reload} className="font-bold underline">
+          Try again
+        </button>
       </Alert>
     )
   }
-  return <PlannerBody events={events} />
+  return <PlannerBody events={events} initialId={params.get('event')} initialOccurrence={params.get('occurrence')} />
 }

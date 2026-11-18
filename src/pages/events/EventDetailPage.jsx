@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CalendarClock, Globe, MapPin, Pencil, Repeat, Trash2 } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Compass, Globe, MapPin, Pencil, Repeat, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/common/Alert'
 import { CategoryBadge } from '@/components/common/CategoryBadge'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button, ButtonLink } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { DepartureTimeline } from '@/components/planner/DepartureTimeline'
+import { ReadinessPanel } from '@/components/planner/ReadinessPanel'
+import { useLiveReadiness } from '@/hooks/useLiveReadiness'
+import { getEventDeparturePlan } from '@/services/departureApi'
 import { useEventQuery } from '@/hooks/useEventQuery'
 import { useEventMutations } from '@/hooks/useEvents'
 import { getEventById } from '@/services/eventApi'
@@ -44,6 +48,9 @@ export default function EventDetailPage() {
   const navigate = useNavigate()
   const { remove } = useEventMutations()
   const { data: event, error, loading } = useEventQuery(() => getEventById(id), [id])
+  // The departure plan is calculated by the backend from this event's saved values (next occurrence if it repeats).
+  const planQuery = useEventQuery(() => getEventDeparturePlan(id), [id])
+  const { now, live, stale } = useLiveReadiness(planQuery.data, planQuery.reload)
   const [confirming, setConfirming] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
@@ -77,6 +84,9 @@ export default function EventDetailPage() {
         description={event.isRecurring ? 'Recurring event' : 'One-time event'}
         actions={
           <>
+            <ButtonLink to={`/planner?event=${event.id}`} variant="soft">
+              <Compass className="size-4" /> View Departure Plan
+            </ButtonLink>
             <ButtonLink to={`/events/${event.id}/edit`} variant="outline">
               <Pencil className="size-4" /> Edit
             </ButtonLink>
@@ -110,6 +120,30 @@ export default function EventDetailPage() {
               <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{event.notes}</p>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Departure plan</CardTitle>
+            <CardDescription>Calculated from this event&apos;s saved travel, preparation and buffer times.</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {planQuery.loading && !planQuery.data ? (
+            <p role="status" className="text-sm text-muted">Calculating…</p>
+          ) : planQuery.error ? (
+            <Alert>
+              {planQuery.error.message}{' '}
+              <button type="button" onClick={planQuery.reload} className="font-bold underline">Try again</button>
+            </Alert>
+          ) : planQuery.data ? (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <ReadinessPanel view={planQuery.data} live={live} stale={stale} />
+              <DepartureTimeline view={planQuery.data} now={now} />
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
