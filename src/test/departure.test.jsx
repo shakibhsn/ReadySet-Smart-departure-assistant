@@ -239,6 +239,27 @@ describe('Dashboard: Next Departure from the backend engine', () => {
   })
 })
 
+describe('Create Event form: live preview comes from the backend engine', () => {
+  it('shows nothing until the input is valid, then sends ONE debounced preview that includes the form timezone', async () => {
+    const api = setup({ path: '/events/new' })
+    const u = userEvent.setup()
+    await u.type(await screen.findByLabelText(/Start time/), '10:00')
+    await new Promise((r) => setTimeout(r, 500))
+    expect(calls(api, 'POST', '/departure/preview')).toHaveLength(0) // no travel time yet: nothing to calculate
+    expect(screen.getByText(/enter a travel duration/i)).toBeInTheDocument()
+
+    await u.type(screen.getByLabelText(/Travel duration/), '35') // two keystrokes
+    await waitFor(() => expect(calls(api, 'POST', '/departure/preview')).toHaveLength(1))
+    await new Promise((r) => setTimeout(r, 600))
+    expect(calls(api, 'POST', '/departure/preview')).toHaveLength(1) // not one per keystroke
+    expect(calls(api, 'POST', '/departure/preview')[0].body).toMatchObject({ startAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T10:00$/), timezone: expect.any(String), travelDurationMinutes: 35 })
+
+    const preview = screen.getByText('Live preview').closest('div')
+    expect(await within(preview.parentElement).findByText('Leave home')).toBeInTheDocument()
+    expect(api.events('token-a')).toHaveLength(0) // previewing saves nothing
+  })
+})
+
 describe('Departure Planner', () => {
   it('shows the backend plan for the selected event: status, formula cards and a four-step timeline', async () => {
     const api = setup({ path: '/planner', events: (a) => [seedEvent(a, 180)] })

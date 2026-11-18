@@ -186,6 +186,32 @@ describe('POST /api/departure/preview', () => {
     expect(d.durations.totalRequiredMinutes).toBe(75)
   })
 
+  it('never modifies a saved event, even when previewing different values for it', async () => {
+    const { token } = await registerAndLogin()
+    const event = await create(token)
+    const row = () => prisma.event.findUnique({ where: { id: event.id } })
+    const before = await row()
+    // what-if with completely different durations and timezone
+    const res = await preview(token, { startAt: '2030-05-10T10:00', timezone: 'America/New_York', travelDurationMinutes: 240, preparationMinutes: 5, arrivalBufferMinutes: 0 })
+    expect(res.status).toBe(200)
+    expect(await row()).toEqual(before) // every column, including updatedAt, is untouched
+    expect((await plan(token, event.id)).body.data.durations.travelDurationMinutes).toBe(35)
+  })
+
+  it('reminder emails and departure plans use the same calculation (saved event, DB row vs API)', async () => {
+    const { departurePlan } = await import('../src/services/reminder.service.js')
+    const { token } = await registerAndLogin()
+    for (const overrides of [{}, { timezone: 'America/New_York', startAt: '2030-03-10T03:30', preparationMinutes: 60 }, { startAt: '2030-05-11T00:10' }]) {
+      const event = await create(token, overrides)
+      const row = await prisma.event.findUnique({ where: { id: event.id } })
+      const reminder = departurePlan(row, row.startAt)
+      const api = (await plan(token, event.id)).body.data.plan
+      expect(reminder.prepStart.toISOString()).toBe(api.preparationStart)
+      expect(reminder.departure.toISOString()).toBe(api.departureTime)
+      expect(reminder.targetArrival.toISOString()).toBe(api.targetArrival)
+    }
+  })
+
   it('gives exactly the same result as a saved event with the same values', async () => {
     const { token } = await registerAndLogin()
     const event = await create(token)

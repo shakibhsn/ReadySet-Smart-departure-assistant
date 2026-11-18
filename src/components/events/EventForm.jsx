@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EVENT_CATEGORIES } from '@/data/categories'
 import { ApiError, fieldErrorsFrom } from '@/lib/apiClient'
-import { calculateDeparture, parseDateTime } from '@/utils/departure'
+import { usePreviewPlan } from '@/hooks/usePreviewPlan'
 import { FREQUENCIES, SERVER_FIELD, WEEKDAYS, formToPayload, timezoneOptions, validateEventForm } from './eventFormUtils'
 import { cn } from '@/lib/utils'
 
@@ -66,11 +66,21 @@ export function EventForm({ initial, submitLabel, onSubmit, onCancel }) {
     }
   }
 
-  const plan = calculateDeparture(parseDateTime(form.date, form.startTime), {
-    travelMinutes: form.travelMinutes,
-    bufferMinutes: form.bufferMinutes,
-    prepMinutes: form.prepMinutes,
-  })
+  // Live preview comes from the backend calculator (the single source of truth), so it can never
+  // disagree with the saved plan or the reminder emails. Debounced, and only sent for valid input.
+  const liveErrors = validateEventForm(form)
+  const previewReady = form.date && form.startTime && !liveErrors.travelMinutes && !liveErrors.prepMinutes && !liveErrors.bufferMinutes
+  const preview = usePreviewPlan(
+    previewReady
+      ? {
+          startAt: `${form.date}T${form.startTime}`,
+          timezone: form.timezone,
+          travelDurationMinutes: Number(form.travelMinutes),
+          preparationMinutes: Number(form.prepMinutes),
+          arrivalBufferMinutes: Number(form.bufferMinutes),
+        }
+      : null,
+  )
 
   return (
     <form id="event-form" onSubmit={handleSubmit} noValidate className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
@@ -142,7 +152,7 @@ export function EventForm({ initial, submitLabel, onSubmit, onCancel }) {
       </Card>
 
       <div className="lg:sticky lg:top-24 lg:self-start">
-        <DeparturePreview plan={plan} title="Live preview" />
+        <DeparturePreview view={preview.data} loading={preview.loading} error={preview.error} title="Live preview" />
       </div>
     </form>
   )

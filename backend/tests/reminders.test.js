@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { prisma } from '../src/config/database.js'
 import { GRACE_MINUTES, departurePlan, dueReminders, runReminderSweep } from '../src/services/reminder.service.js'
+import { calculateDeparturePlan } from '../src/services/departure/departureCalculator.js'
 import { flushEmails, mailbox, registerAndLogin } from './helpers.js'
 
 const MIN = 60_000
@@ -15,6 +16,24 @@ describe('departure maths (same formulas as the frontend)', () => {
     expect(plan.targetArrival.toISOString()).toBe('2026-11-20T09:50:00.000Z')
     expect(plan.departure.toISOString()).toBe('2026-11-20T09:15:00.000Z')
     expect(plan.prepStart.toISOString()).toBe('2026-11-20T08:45:00.000Z')
+  })
+})
+
+describe('reminders fire exactly at the departure-plan milestones', () => {
+  it.each([
+    ['Asia/Dhaka', '2026-11-20T04:00:00Z'],
+    ['America/New_York', '2026-03-08T07:30:00Z'], // US spring-forward day
+    ['America/New_York', '2026-11-01T06:10:00Z'], // US fall-back day
+  ])('%s %s: prep/departure reminders become due at plan times, not a millisecond before', (timezone, iso) => {
+    const e = { ...event, timezone }
+    const start = new Date(iso)
+    const p = calculateDeparturePlan({ startAt: start, timezone, travelDurationMinutes: e.travelDurationMinutes, preparationMinutes: e.preparationMinutes, arrivalBufferMinutes: e.arrivalBufferMinutes })
+    const only = (k) => ({ emailUpcomingReminders: false, emailPrepReminders: false, emailDepartureReminders: false, [k]: true })
+    const t = (d, ms) => new Date(d.getTime() + ms)
+    expect(dueReminders(e, start, only('emailPrepReminders'), t(p.preparationStart, -1))).toEqual([])
+    expect(dueReminders(e, start, only('emailPrepReminders'), p.preparationStart)).toEqual(['prep'])
+    expect(dueReminders(e, start, only('emailDepartureReminders'), t(p.departureTime, -1))).toEqual([])
+    expect(dueReminders(e, start, only('emailDepartureReminders'), p.departureTime)).toEqual(['departure'])
   })
 })
 
