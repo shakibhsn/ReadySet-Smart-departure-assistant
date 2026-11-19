@@ -1,5 +1,0 @@
-[33ma4205f4[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add one-command local database setup (npm run db:setup)
- backend/package.json               |   1 [32m+[m
- backend/scripts/setup-local-db.mjs | 113 [32m+++++++++++++++++++++++++++++++++++++[m
- package.json                       |   1 [32m+[m
- 3 files changed, 115 insertions(+)
