@@ -12,7 +12,7 @@
 //     No automatic clean-up is ever attempted.
 import { spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
@@ -31,6 +31,18 @@ const scrub = (text) => {
   for (const s of secrets) if (s) out = out.split(s).join('***')
   return out.replace(/postgres(ql)?:\/\/\S+/gi, 'postgresql://***')
 }
+// Everything printed is also appended (scrubbed) to a gitignored log, so the result never depends on the terminal.
+const logFile = path.join(backend, '.db-setup.log')
+writeFileSync(logFile, `setup-local-db v4  ${new Date().toISOString()}\n`)
+for (const method of ['log', 'error']) {
+  const original = console[method].bind(console)
+  console[method] = (...args) => {
+    original(...args)
+    try { appendFileSync(logFile, `${scrub(args.join(' '))}\n`) } catch { /* logging must never break setup */ }
+  }
+}
+process.on('exit', (code) => console.log(`\n[setup-local-db v4] exit code ${code}. Full log: ${logFile}`))
+console.log('setup-local-db v4')
 const done = (name) => {
   steps.push({ name, status: 'done' })
   console.log(`  ok  ${name}`)
