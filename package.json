@@ -12,6 +12,7 @@
     "dev:api": "npm --prefix backend run dev",
     "test:api": "npm --prefix backend test",
     "db:migrate": "npm --prefix backend run db:migrate",
+    "db:setup": "npm --prefix backend run db:setup",
     "db:generate": "npm --prefix backend run db:generate",
     "setup:api": "npm --prefix backend install"
   },
