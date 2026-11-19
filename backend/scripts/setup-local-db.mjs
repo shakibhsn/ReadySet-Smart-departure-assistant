@@ -42,6 +42,7 @@ function summary() {
 function stop(message, { failedStep } = {}) {
   if (failedStep) steps.push({ name: failedStep, status: 'failed' })
   console.error(`\n${scrub(message)}`)
+  if (failedStep) console.error(`Failed step: ${failedStep} (server ${HOST}:${PORT}, psql: ${psqlBin ?? 'not found'})`)
   summary()
   const changed = steps.some((s) => s.status === 'done' && /^(created|restricted|wrote|applied)/.test(s.name))
   console.error(
@@ -90,7 +91,7 @@ function askHidden(question) {
 
 // ---------- psql (SQL goes through stdin so no password ever appears in a process command line) ----------
 const candidates = [process.env.PSQL, ...[17, 16, 15, 14].map((v) => `C:/Program Files/PostgreSQL/${v}/bin/psql.exe`), 'psql'].filter(Boolean)
-const psqlBin = candidates.find((c) => c === 'psql' || existsSync(c))
+const psqlBin = candidates.find((c) => c !== 'psql' && existsSync(c)) ?? (spawnSync('psql', ['--version']).error ? null : 'psql')
 let adminPassword = ''
 
 function psql(sql, db = 'postgres') {
@@ -99,7 +100,12 @@ function psql(sql, db = 'postgres') {
     env: { ...process.env, PGPASSWORD: adminPassword },
     encoding: 'utf8',
   })
-  return { ok: r.status === 0, out: (r.stdout ?? '').trim(), err: scrub((r.stderr ?? '').trim().split('\n')[0]) }
+  const reason = r.error
+    ? `could not start psql (${r.error.code ?? r.error.message})`
+    : r.signal
+      ? `psql was killed (${r.signal})`
+      : scrub((r.stderr ?? '').trim()) || `psql exited with code ${r.status} and no message`
+  return { ok: r.status === 0 && !r.error, out: (r.stdout ?? '').trim(), err: reason }
 }
 const lit = (value) => `'${String(value).replace(/'/g, "''")}'`
 
