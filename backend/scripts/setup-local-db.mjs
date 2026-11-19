@@ -33,7 +33,7 @@ const scrub = (text) => {
 }
 // Everything printed is also appended (scrubbed) to a gitignored log, so the result never depends on the terminal.
 const logFile = path.join(backend, '.db-setup.log')
-writeFileSync(logFile, `setup-local-db v4  ${new Date().toISOString()}\n`)
+writeFileSync(logFile, `setup-local-db v5  ${new Date().toISOString()}\n`)
 for (const method of ['log', 'error']) {
   const original = console[method].bind(console)
   console[method] = (...args) => {
@@ -41,8 +41,8 @@ for (const method of ['log', 'error']) {
     try { appendFileSync(logFile, `${scrub(args.join(' '))}\n`) } catch { /* logging must never break setup */ }
   }
 }
-process.on('exit', (code) => console.log(`\n[setup-local-db v4] exit code ${code}. Full log: ${logFile}`))
-console.log('setup-local-db v4')
+process.on('exit', (code) => console.log(`\n[setup-local-db v5] exit code ${code}. Full log: ${logFile}`))
+console.log('setup-local-db v5')
 const done = (name) => {
   steps.push({ name, status: 'done' })
   console.log(`  ok  ${name}`)
@@ -76,12 +76,24 @@ function askHidden(question) {
     process.once('exit', restore)
     process.stdout.write(question)
     let value = ''
+    let emptyTries = 0
+    const shownAt = Date.now()
     stdin.setRawMode(true)
     stdin.resume()
     stdin.setEncoding('utf8')
     const onData = (chunk) => {
       for (const c of chunk) {
         if (c === '\r' || c === '\n' || c === '\u0004') {
+          if (value === '') {
+            // A stale Enter from launching the command is ignored; a real empty Enter re-prompts (max 3).
+            if (Date.now() - shownAt < 200) continue
+            if (++emptyTries >= 3) {
+              restore()
+              stop('No password was entered 3 times (typing is hidden, so nothing appears on screen). Run the command again and type or paste the postgres password, then press Enter.', { failedStep: 'read postgres password' })
+            }
+            process.stdout.write('\nNo password was entered. Typing is hidden; nothing appears on screen. Try again: ')
+            continue
+          }
           restore()
           stdin.pause()
           stdin.off('data', onData)
@@ -135,6 +147,7 @@ if (!psqlBin) stop('psql was not found. Install the PostgreSQL command-line tool
 
 adminPassword = await askHidden(`PostgreSQL "postgres" user password (${HOST}:${PORT}): `)
 secrets.add(adminPassword)
+console.log('password received: yes') // never prints the value or its length
 
 // ---- Phase 1: read-only inspection (nothing is changed here) ----
 console.log('\nInspecting (read-only)...')
