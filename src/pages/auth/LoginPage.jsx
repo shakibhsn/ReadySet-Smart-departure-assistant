@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Lock, Mail } from 'lucide-react'
+import { ArrowRight, Lock, Mail } from 'lucide-react'
 import AuthLayout from '@/layouts/AuthLayout'
 import { Alert } from '@/components/common/Alert'
 import { FormInput } from '@/components/common/FormInput'
@@ -63,7 +63,7 @@ export default function LoginPage() {
       footer={
         <>
           New to ReadySet?{' '}
-          <Link to="/register" className="font-semibold text-brand-700 hover:underline">
+          <Link to="/register" className="font-semibold text-brand-700 transition-colors hover:text-brand-800 hover:underline">
             Create an account
           </Link>
         </>
@@ -108,12 +108,13 @@ export default function LoginPage() {
             <Checkbox checked={form.remember} onChange={(e) => setForm({ ...form, remember: e.target.checked })} />
             Remember me
           </label>
-          <Link to="/forgot-password" className="text-sm font-semibold text-brand-700 hover:underline">
+          <Link to="/forgot-password" className="text-sm font-semibold text-brand-700 transition-colors hover:text-brand-800 hover:underline">
             Forgot password?
           </Link>
         </div>
         <Button type="submit" size="lg" className="w-full" disabled={submitting}>
           {submitting ? 'Logging in…' : 'Log in'}
+          {!submitting && <ArrowRight aria-hidden="true" className="size-4" />}
         </Button>
       </form>
     </AuthLayout>

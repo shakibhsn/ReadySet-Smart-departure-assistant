@@ -6,8 +6,7 @@
 -- If a role or database with these names already exists, the script STOPS with an error
 -- (so it can never overwrite another project's data). Pick other names in that case.
 --
--- CREATEDB on the role is needed because `prisma migrate dev` makes a temporary shadow database.
 
-CREATE ROLE readyset_app LOGIN PASSWORD :'app_password' CREATEDB;
+CREATE ROLE readyset_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD :'app_password';
 CREATE DATABASE readyset_dev  OWNER readyset_app;
 CREATE DATABASE readyset_test OWNER readyset_app;

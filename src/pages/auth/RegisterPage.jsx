@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Lock, Mail, MailCheck, User } from 'lucide-react'
+import { ArrowRight, Lock, Mail, MailCheck, User } from 'lucide-react'
 import AuthLayout from '@/layouts/AuthLayout'
 import { Alert } from '@/components/common/Alert'
 import { FormInput } from '@/components/common/FormInput'
@@ -96,7 +96,7 @@ export default function RegisterPage() {
       footer={
         <>
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-brand-700 hover:underline">
+          <Link to="/login" className="font-semibold text-brand-700 transition-colors hover:text-brand-800 hover:underline">
             Log in
           </Link>
         </>
@@ -120,6 +120,7 @@ export default function RegisterPage() {
         </div>
         <Button type="submit" size="lg" className="w-full" disabled={submitting}>
           {submitting ? 'Creating account…' : 'Create account'}
+          {!submitting && <ArrowRight aria-hidden="true" className="size-4" />}
         </Button>
       </form>
     </AuthLayout>
