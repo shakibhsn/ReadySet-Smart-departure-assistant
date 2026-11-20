@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { timezoneOptions } from '@/components/events/eventFormUtils'
 import { DepartureTimeline } from '@/components/planner/DepartureTimeline'
 import { ReadinessPanel } from '@/components/planner/ReadinessPanel'
+import { WeatherCard } from '@/components/weather/WeatherCard'
 import { ResultCard } from '@/components/planner/ResultCard'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -83,7 +84,8 @@ function PlannerBody({ events, initialId, initialOccurrence }) {
       <PageHeader title="Departure Planner" description="Work backwards from your event to find the right moment to leave." />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        <Card className="self-start">
+        <div className="space-y-6 self-start">
+        <Card>
           <CardHeader>
             <div>
               <CardTitle>Plan inputs</CardTitle>
@@ -115,6 +117,8 @@ function PlannerBody({ events, initialId, initialOccurrence }) {
             )}
           </CardContent>
         </Card>
+        {event && <WeatherCard key={event.id} event={event} />}
+        </div>
 
         <div className="space-y-6">
           {active.loading && !view ? (

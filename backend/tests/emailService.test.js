@@ -151,8 +151,10 @@ describe('provider adapters', () => {
 })
 
 describe('startup configuration validation (child process, never sends anything)', () => {
+  // The worker's own connection variables (Prisma loads backend/.env into it) must not leak into the child.
+  const inherited = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(DATABASE_URL|SHADOW_DATABASE_URL|DIRECT_URL|TEST_DATABASE_URL|PG.*)$/i.test(k)))
   const baseEnv = {
-    ...process.env,
+    ...inherited,
     JWT_SECRET: 'a'.repeat(40),
     FRONTEND_URL: 'http://localhost:5173',
   }

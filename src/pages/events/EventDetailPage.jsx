@@ -8,6 +8,8 @@ import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChecklistPanel } from '@/components/checklist/ChecklistPanel'
+import { WeatherCard } from '@/components/weather/WeatherCard'
 import { DepartureTimeline } from '@/components/planner/DepartureTimeline'
 import { ReadinessPanel } from '@/components/planner/ReadinessPanel'
 import { useLiveReadiness } from '@/hooks/useLiveReadiness'
@@ -146,6 +148,13 @@ export default function EventDetailPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <ChecklistPanel event={event} />
+        <div className="self-start">
+          <WeatherCard event={event} />
+        </div>
+      </div>
 
       <ConfirmDialog
         open={confirming}

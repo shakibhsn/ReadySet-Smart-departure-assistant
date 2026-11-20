@@ -8,16 +8,14 @@ import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 import { NextDepartureCard } from '@/components/dashboard/NextDepartureCard'
 import { ReadinessCard } from '@/components/dashboard/ReadinessCard'
 import { ChecklistPreview } from '@/components/dashboard/ChecklistPreview'
-import { WeatherCard } from '@/components/dashboard/WeatherCard'
+import { WeatherCard } from '@/components/weather/WeatherCard'
 import { QuickActionCard } from '@/components/dashboard/QuickActionCard'
 import { ScheduleList } from '@/components/events/ScheduleList'
-import { useAppState } from '@/hooks/useAppState'
+import { useChecklist } from '@/hooks/useChecklist'
 import { useAuth } from '@/hooks/useAuth'
 import { useEventQuery } from '@/hooks/useEventQuery'
-import { mockWeather } from '@/data/weather'
 import { getUpcomingPlans } from '@/services/departureApi'
 import { getEvents, getOccurrences, getUpcomingEvents } from '@/services/eventApi'
-import { getProgress } from '@/utils/events'
 import { todayKey } from '@/utils/format'
 
 function greeting(date = new Date()) {
@@ -28,7 +26,6 @@ function greeting(date = new Date()) {
 }
 
 export default function DashboardPage() {
-  const { checklists, toggleItem } = useAppState()
   const { user, justRegistered, dismissWelcome } = useAuth()
   const timezone = user.preference?.timezone ?? 'Asia/Dhaka'
   const today = todayKey(timezone)
@@ -56,8 +53,8 @@ export default function DashboardPage() {
   const nextPlan = plans.data?.plans[0] ?? null
   const nextEvent = nextPlan?.event ?? null // checklist / readiness cards follow the same event
   const total = count.data?.pagination.total ?? 0
-  const items = nextEvent ? (checklists[nextEvent.id] ?? []) : []
-  const progress = getProgress(items)
+  const checklist = useChecklist(nextEvent?.id ?? null) // database-backed, for the same event as the Next Departure card
+  const { items, progress } = checklist
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -131,13 +128,14 @@ export default function DashboardPage() {
                 eventTitle={nextEvent?.title}
                 items={items}
                 progress={progress}
-                onToggle={(itemId) => toggleItem(nextEvent.id, itemId)}
+                onToggle={checklist.toggle}
+                loading={checklist.loading}
               />
             </div>
 
             <div className="space-y-6">
               <ReadinessCard eventTitle={nextEvent?.title} done={progress.done} total={progress.total} percent={progress.percent} />
-              <WeatherCard weather={mockWeather} />
+              {nextEvent && <WeatherCard event={nextEvent} />}
             </div>
           </div>
         </>

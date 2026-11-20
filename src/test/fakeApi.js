@@ -10,6 +10,8 @@ export function createFakeApi({ users, events = {} }) {
   const calls = []
   let seq = 0
   const overrides = []
+  const checklists = {} // token -> eventId -> items
+  let weatherResult = { status: 'no_location', eventStartAt: null, location: null, forecast: null, fetchedAt: null, message: 'Add a destination to see the weather.' }
 
   const respond = (status, body) =>
     Promise.resolve({ ok: status >= 200 && status < 300, status, json: () => Promise.resolve(body) })
@@ -108,6 +110,45 @@ export function createFakeApi({ users, events = {} }) {
       const startIso = /Z$|[+-]\d\d:\d\d$/.test(body.startAt) ? new Date(body.startAt).toISOString() : `${body.startAt}:00.000Z`
       return ok(planView(asEvent, startIso))
     }
+    // ---- checklist + weather (simplified mirror of the backend; per-token isolation like the real API) ----
+    if (path === '/checklist-templates') return ok({ templates: [{ key: 'university', label: 'University / Class', items: [{ text: 'Laptop', group: 'Electronics' }, { text: 'Charger', group: 'Electronics' }] }, { key: 'other', label: 'Custom event', items: [] }] })
+    const weatherMatch = path.match(/^\/events\/([^/]+)\/weather$/)
+    if (weatherMatch) {
+      if (!mine.some((e) => e.id === weatherMatch[1])) return respond(404, { success: false, message: 'Event not found', errors: [] })
+      return ok({ weather: weatherResult })
+    }
+    const clMatch = path.match(/^\/events\/([^/]+)\/checklist(?:\/([^/]+?))?(?:\/(completion))?$/)
+    if (clMatch) {
+      const [, eventId, tail, completion] = clMatch
+      const event = mine.find((e) => e.id === eventId)
+      if (!event) return respond(404, { success: false, message: 'Event not found', errors: [] })
+      const items = ((checklists[token] ??= {})[eventId] ??= [])
+      const view = () => ({ items: structuredClone(items), progress: { total: items.length, done: items.filter((i) => i.done).length } })
+      const make = (text, group = 'Essentials') => ({ id: `item-${++seq}`, eventId, text, group, done: false, position: items.length })
+      if (!tail && method === 'GET') return ok(view())
+      if (!tail && method === 'POST') {
+        if (!body.text?.trim()) return respond(400, { success: false, message: 'Validation failed', errors: [{ field: 'text', message: 'Item name is required' }] })
+        const item = make(body.text.trim(), body.group)
+        items.push(item)
+        return respond(201, { success: true, message: 'Item added', data: { item: { ...item } } })
+      }
+      if (tail === 'apply-template') {
+        const names = event.category === 'university' ? ['Laptop', 'Charger'] : []
+        const fresh = names.filter((n) => !items.some((i) => i.text === n))
+        fresh.forEach((n) => items.push(make(n, 'Electronics')))
+        return ok({ ...view(), template: event.category, added: fresh.length, skipped: names.length - fresh.length })
+      }
+      const item = items.find((i) => i.id === tail)
+      if (!item) return respond(404, { success: false, message: 'Checklist item not found', errors: [] })
+      if (method === 'DELETE') {
+        items.splice(items.indexOf(item), 1)
+        return ok({}, 'Item deleted')
+      }
+      if (method === 'PATCH') {
+        Object.assign(item, completion ? { done: body.done } : body)
+        return ok({ item: { ...item } })
+      }
+    }
     const planMatch = path.match(/^\/events\/([^/]+)\/departure-plan$/)
     if (planMatch) {
       const found = mine.find((e) => e.id === planMatch[1])
@@ -141,6 +182,9 @@ export function createFakeApi({ users, events = {} }) {
     events: (token) => (db[token] ??= []),
     /** Make matching requests fail. `fn(method, path, token)` returns a response promise or undefined. */
     override: (fn) => overrides.push(fn),
+    /** Set the weather every event reports (the shape of the backend weather result). */
+    setWeather: (w) => { weatherResult = w },
+    checklist: (token, eventId) => (checklists[token] ??= {})[eventId] ?? [],
     clearOverrides: () => (overrides.length = 0),
     respond,
     toApiEvent,

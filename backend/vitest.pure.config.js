@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['tests/departure.test.js', 'tests/dbGuard.test.js', 'tests/envGuard.test.js'],
+    include: ['tests/departure.test.js', 'tests/dbGuard.test.js', 'tests/envGuard.test.js', 'tests/weatherPure.test.js'],
     testTimeout: 20000,
   },
 })

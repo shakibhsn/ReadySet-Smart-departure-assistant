@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ChecklistItem } from '@/components/checklist/ChecklistItem'
 
-export function ChecklistPreview({ eventTitle, items, progress, onToggle }) {
+export function ChecklistPreview({ eventTitle, items, progress, onToggle, loading = false }) {
   return (
     <Card>
       <CardHeader>
@@ -18,8 +18,10 @@ export function ChecklistPreview({ eventTitle, items, progress, onToggle }) {
         </ButtonLink>
       </CardHeader>
       <CardContent>
-        {items.length === 0 ? (
-          <EmptyState icon={ListChecks} title="No checklist yet" description="Open Smart Checklist to start from a template." className="py-8" />
+        {loading ? (
+          <p role="status" className="py-6 text-center text-sm text-muted">Loading checklist…</p>
+        ) : items.length === 0 ? (
+          <EmptyState icon={ListChecks} title="No checklist yet" description={eventTitle ? "Open Smart Checklist to start from a template." : "Create an event to get a checklist."} className="py-8" />
         ) : (
           <>
             <div className="mb-3 flex items-center gap-3 px-1">

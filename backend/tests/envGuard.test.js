@@ -8,12 +8,13 @@ import { describe, expect, it } from 'vitest'
 // These tests run env.js in a CHILD process from an EMPTY directory (so the real backend/.env is never
 // loaded) and never open a database connection: env.js only validates configuration.
 const envModule = pathToFileURL(path.resolve('src/config/env.js')).href
+const databaseModule = pathToFileURL(path.resolve('src/config/database.js')).href
 const url = (db, { user = 'readyset_isolated_app', host = 'localhost', port = '5432' } = {}) => `postgresql://${user}:PLACEHOLDER@${host}:${port}/${db}?schema=public`
 const DEV = url('readyset_isolated_dev')
 const TEST = url('readyset_isolated_test')
 const SHADOW = url('readyset_isolated_shadow')
 
-function load(extra = {}, { file } = {}) {
+function load(extra = {}, { file, entry = envModule } = {}) {
   const cwd = mkdtempSync(path.join(tmpdir(), 'rs-env-'))
   const nodeEnv = extra.NODE_ENV ?? 'development'
   if (file !== undefined) writeFileSync(path.join(cwd, nodeEnv === 'test' ? '.env.test' : '.env'), file)
@@ -27,7 +28,7 @@ function load(extra = {}, { file } = {}) {
   }
   const env = { ...base, ...extra }
   for (const k of Object.keys(env)) if (env[k] === undefined) delete env[k]
-  const r = spawnSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(envModule)})`], { cwd, env, encoding: 'utf8' })
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(entry)})`], { cwd, env, encoding: 'utf8' })
   return { status: r.status, stderr: r.stderr }
 }
 const PROD = { NODE_ENV: 'production', EMAIL_MODE: 'provider', RESEND_API_KEY: 're_placeholder_key', EMAIL_FROM: 'noreply@example.com' }
@@ -97,6 +98,15 @@ describe('a parent-shell variable cannot silently redirect the API or the tests'
   })
   it('a shell value identical to the file is fine', () => {
     expect(load({}, { file: `DATABASE_URL=${DEV}\n` }).status).toBe(0)
+  })
+})
+
+describe('the Prisma client import cannot trigger a false shell-override refusal', () => {
+  it('database.js starts in test mode even though backend/.env (development) exists next to .env.test', () => {
+    const r = load({ NODE_ENV: 'test', DATABASE_URL: undefined, EMAIL_MODE: 'console' }, { file: `DATABASE_URL=${TEST}
+`, entry: databaseModule })
+    expect(r.stderr).not.toMatch(/differs from the env file/)
+    expect(r.status).toBe(0)
   })
 })
 
