@@ -70,7 +70,7 @@ export function AppNavbar({ onMenuClick }) {
             <ChevronDown className="hidden size-4 text-muted sm:block" />
           </button>
           {menuOpen && (
-            <div role="menu" className="absolute right-0 mt-2 w-56 rounded-xl border border-line bg-surface p-1.5 shadow-lift">
+            <div role="menu" className="anim-pop absolute right-0 z-40 mt-2 w-56 rounded-xl border border-line bg-surface p-1.5 shadow-lift">
               <div className="px-3 py-2">
                 <p className="truncate text-sm font-bold">{user?.name}</p>
                 <p className="truncate text-xs text-muted">{user?.email}</p>

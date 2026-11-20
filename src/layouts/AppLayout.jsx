@@ -28,7 +28,7 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-line lg:block">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-line bg-surface lg:block">
         <AppSidebar />
       </aside>
 
@@ -36,7 +36,7 @@ export default function AppLayout() {
       <div className={cn('fixed inset-0 z-50 lg:hidden', !drawerOpen && 'pointer-events-none')} aria-hidden={!drawerOpen}>
         <div
           onClick={() => setDrawerOpen(false)}
-          className={cn('absolute inset-0 bg-ink/40 transition-opacity duration-200', drawerOpen ? 'opacity-100' : 'opacity-0')}
+          className={cn('absolute inset-0 bg-ink/40 backdrop-blur-sm transition-opacity duration-200', drawerOpen ? 'opacity-100' : 'opacity-0')}
         />
         <aside
           className={cn(
@@ -53,7 +53,10 @@ export default function AppLayout() {
         <AppNavbar onMenuClick={() => setDrawerOpen(true)} />
         <VerificationBanner />
         <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <Outlet />
+          {/* Re-keyed per route so each page fades in (one short fade; disabled by prefers-reduced-motion). */}
+          <div key={pathname} className="anim-fade">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

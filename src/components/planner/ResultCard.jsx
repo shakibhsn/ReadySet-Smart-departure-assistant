@@ -5,7 +5,7 @@ export function ResultCard({ icon: Icon, label, time, formula, featured = false 
     <div
       className={cn(
         'rounded-2xl border p-5 shadow-card transition-transform hover:-translate-y-0.5',
-        featured ? 'border-brand-700 bg-brand-700 text-white' : 'border-line bg-surface',
+        featured ? 'hero-scope border-transparent bg-hero-gradient text-white' : 'border-line bg-surface',
       )}
     >
       <span

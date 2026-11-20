@@ -79,16 +79,18 @@ export default function DashboardPage() {
         <LoadingSkeleton />
       ) : (
         <>
-          <NextDepartureCard plan={nextPlan} onRefresh={plans.reload} />
+          <div className="anim-fade-up">
+            <NextDepartureCard plan={nextPlan} onRefresh={plans.reload} />
+          </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="anim-fade-up grid gap-4 sm:grid-cols-3" style={{ '--d': '70ms' }}>
             <QuickActionCard to="/events/new" icon={CalendarPlus} title="Create event" description="Add something new" />
             <QuickActionCard to="/planner" icon={Compass} title="Plan departure" description="Work out when to leave" />
             <QuickActionCard to="/schedule" icon={CalendarDays} title="View schedule" description="See everything coming up" />
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-            <div className="space-y-6">
+            <div className="anim-fade-up space-y-6" style={{ '--d': '140ms' }}>
               <Card>
                 <CardHeader>
                   <div>
@@ -133,7 +135,7 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div className="space-y-6">
+            <div className="anim-fade-up space-y-6" style={{ '--d': '210ms' }}>
               <ReadinessCard eventTitle={nextEvent?.title} done={progress.done} total={progress.total} percent={progress.percent} />
               {nextEvent && <WeatherCard event={nextEvent} />}
             </div>

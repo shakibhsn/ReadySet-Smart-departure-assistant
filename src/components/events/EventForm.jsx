@@ -87,12 +87,15 @@ export function EventForm({ initial, submitLabel, onSubmit, onCancel }) {
       <Card>
         <CardContent className="grid gap-5 pt-6 sm:grid-cols-2 sm:pt-6">
           {formError && <Alert className="sm:col-span-2">{formError}</Alert>}
+          <h3 className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700 sm:col-span-2"><span>Event</span><span aria-hidden="true" className="h-px flex-1 bg-line" /></h3>
           <FormInput className="sm:col-span-2" label="Event title" required placeholder="e.g. Database Systems Class" value={form.title} error={errors.title} onChange={set('title')} />
           <FormSelect label="Category" required placeholder="Select a category" options={EVENT_CATEGORIES} value={form.category} error={errors.category} onChange={set('category')} />
           <FormInput label="Destination" icon={MapPin} placeholder="Building, address or place" value={form.destination} error={errors.destination} onChange={set('destination')} />
+          <h3 className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700 sm:col-span-2"><span>When</span><span aria-hidden="true" className="h-px flex-1 bg-line" /></h3>
           <FormInput label="Event date" type="date" required value={form.date} error={errors.date} onChange={set('date')} />
           <FormInput label="Start time" type="time" required value={form.startTime} error={errors.startTime} onChange={set('startTime')} />
           <FormSelect className="sm:col-span-2" label="Timezone" options={zoneOptions} value={form.timezone} error={errors.timezone} hint="The date and time above are in this timezone." onChange={set('timezone')} />
+          <h3 className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700 sm:col-span-2"><span>Getting ready and getting there</span><span aria-hidden="true" className="h-px flex-1 bg-line" /></h3>
           <FormInput label="Travel duration" type="number" inputMode="numeric" min="1" required suffix="min" placeholder="35" value={form.travelMinutes} error={errors.travelMinutes} onChange={set('travelMinutes')} />
           <FormInput label="Preparation time" type="number" inputMode="numeric" min="0" required suffix="min" value={form.prepMinutes} error={errors.prepMinutes} hint="Time you need to get ready." onChange={set('prepMinutes')} />
           <FormInput label="Arrival buffer" type="number" inputMode="numeric" min="0" required suffix="min" value={form.bufferMinutes} error={errors.bufferMinutes} hint="How early you want to arrive." onChange={set('bufferMinutes')} />

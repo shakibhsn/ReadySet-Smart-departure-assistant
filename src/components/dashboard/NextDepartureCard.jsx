@@ -50,9 +50,10 @@ export function NextDepartureCard({ plan, onRefresh }) {
   const planLink = `/planner?event=${event.id}${event.isRecurring ? `&occurrence=${encodeURIComponent(event.startAt)}` : ''}`
 
   return (
-    <section aria-label="Next departure" className="relative overflow-hidden rounded-2xl bg-brand-800 text-white shadow-lift">
-      <div aria-hidden="true" className="absolute -right-16 -top-16 size-64 rounded-full bg-brand-600/40" />
-      <div aria-hidden="true" className="absolute -bottom-24 right-24 size-56 rounded-full bg-accent-600/15" />
+    <section aria-label="Next departure" className="hero-scope relative overflow-hidden rounded-2xl bg-hero-gradient text-white shadow-lift ring-1 ring-white/10">
+      <div aria-hidden="true" className="absolute -right-16 -top-20 size-72 rounded-full bg-brand-400/25 blur-2xl" />
+      <div aria-hidden="true" className="absolute -bottom-28 right-20 size-60 rounded-full bg-accent-400/20 blur-2xl" />
+      <div aria-hidden="true" className="absolute left-0 top-0 h-1 w-24 rounded-br-full bg-amber-400" />
 
       <div className="relative grid grid-cols-1 gap-6 p-5 sm:p-7 lg:grid-cols-[1.2fr_1fr] lg:gap-8">
         <div className="min-w-0">
@@ -83,7 +84,7 @@ export function NextDepartureCard({ plan, onRefresh }) {
               { label: 'Leave at', value: local.departureTime.time12, strong: true },
               { label: 'Target arrival', value: local.targetArrival.time12 },
             ].map(({ label, value, strong }) => (
-              <div key={label} className={`rounded-xl px-3 py-3 ${strong ? 'bg-white text-ink' : 'bg-white/10'}`}>
+              <div key={label} className={`rounded-xl px-3 py-3 ${strong ? 'bg-surface text-ink' : 'bg-white/10'}`}>
                 <dt className={`text-[11px] font-semibold uppercase tracking-wide ${strong ? 'text-brand-600' : 'text-brand-200'}`}>{label}</dt>
                 <dd className="mt-1 text-base font-extrabold sm:text-lg">{value}</dd>
               </div>

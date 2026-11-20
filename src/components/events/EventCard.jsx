@@ -15,7 +15,7 @@ export function EventCard({ event, showDay = false, onDelete, className }) {
   return (
     <article
       className={cn(
-        'flex gap-4 rounded-xl border border-line bg-surface p-4 transition-shadow hover:shadow-lift',
+        'card-hover flex gap-4 rounded-xl border border-line bg-surface p-4',
         className,
       )}
     >

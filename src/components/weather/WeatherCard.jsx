@@ -28,7 +28,7 @@ export function WeatherView({ weather, onRetry }) {
   return (
     <>
       <div className="flex items-center gap-4">
-        <span className="flex size-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-500" aria-hidden="true">
+        <span className="flex size-16 items-center justify-center rounded-2xl bg-linear-to-br from-amber-50 to-amber-100 text-amber-500 ring-1 ring-inset ring-amber-200" aria-hidden="true">
           <Icon className="size-9" />
         </span>
         <div>

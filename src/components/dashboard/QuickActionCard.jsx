@@ -5,7 +5,7 @@ export function QuickActionCard({ to, icon: Icon, title, description }) {
   return (
     <Link
       to={to}
-      className="group flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lift"
+      className="card-hover group flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-card"
     >
       <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition-colors group-hover:bg-brand-600 group-hover:text-white">
         <Icon className="size-6" />

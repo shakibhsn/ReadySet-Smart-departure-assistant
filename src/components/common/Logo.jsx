@@ -7,7 +7,7 @@ export function LogoMark({ className }) {
       <rect width="32" height="32" rx="9" fill="var(--color-brand-600)" />
       <circle cx="16" cy="17" r="8.5" fill="none" stroke="#fff" strokeWidth="2.4" />
       <path d="M16 12.5V17l3 2" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="24" cy="8" r="3" fill="var(--color-accent-400)" />
+      <circle cx="24" cy="8" r="3" fill="var(--color-amber-400)" />
     </svg>
   )
 }

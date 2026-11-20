@@ -12,7 +12,7 @@ export function Progress({ value = 0, className, barClassName, label = 'Progress
       className={cn('h-2 w-full overflow-hidden rounded-full bg-brand-100', className)}
     >
       <div
-        className={cn('h-full rounded-full bg-brand-600 transition-[width] duration-500', barClassName)}
+        className={cn('h-full rounded-full bg-linear-to-r from-brand-500 to-accent-500 transition-[width] duration-700 ease-out', barClassName)}
         style={{ width: `${clamped}%` }}
       />
     </div>

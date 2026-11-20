@@ -49,7 +49,7 @@ export function NotificationBell() {
         )}
       </button>
       {open && (
-        <div role="dialog" aria-label="Notifications" className="absolute right-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface shadow-lift">
+        <div role="dialog" aria-label="Notifications" className="anim-pop absolute right-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-line bg-surface shadow-lift">
           <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
             <p className="text-sm font-bold">Notifications</p>
             <button type="button" onClick={markAllRead} disabled={unreadCount === 0} className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-brand-700 disabled:cursor-default disabled:opacity-40">
