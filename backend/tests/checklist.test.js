@@ -23,7 +23,7 @@ describe('checklist templates', () => {
     const res = await api().get('/api/checklist-templates').set(bearer(token))
     expect(res.status).toBe(200)
     const byKey = Object.fromEntries(res.body.data.templates.map((t) => [t.key, t]))
-    expect(Object.keys(byKey)).toEqual(['university', 'office', 'appointment', 'travel', 'personal', 'other'])
+    expect(Object.keys(byKey)).toEqual(['university', 'office', 'interview', 'business', 'appointment', 'travel', 'gym', 'personal', 'other'])
     expect(byKey.university.items.map((i) => i.text)).toContain('Laptop')
     expect(byKey.other.items).toEqual([])
   })

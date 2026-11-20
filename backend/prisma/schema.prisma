@@ -34,6 +34,9 @@ model User {
   notifications             Notification[]
   eventExceptions           EventException[]
   eventTemplates            EventTemplate[]
+  packingTemplates          PackingTemplate[]
+  forgottenReports          ForgottenItemReport[]
+  savedPlaces               SavedPlace[]
 
   @@map("users")
 }
@@ -59,11 +62,14 @@ model UserPreference {
   notificationLeadMinutes     Int      @default(10) @map("notification_lead_minutes")
   // The user's opt-in to browser (Web Notifications) alerts; the browser permission itself lives in the browser.
   browserNotificationsEnabled Boolean  @default(false) @map("browser_notifications_enabled")
+  // The user's default starting location (one per user by construction). Cleared automatically if that place is deleted.
+  defaultStartPlaceId         String?  @map("default_start_place_id") @db.Uuid
   createdAt                   DateTime @default(now()) @map("created_at")
   updatedAt                   DateTime @updatedAt @map("updated_at")
 
   // Deleting a user removes their preference row (no orphans).
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  defaultStartPlace SavedPlace? @relation("DefaultStartPlace", fields: [defaultStartPlaceId], references: [id], onDelete: SetNull)
 
   @@map("user_preferences")
 }
@@ -112,6 +118,7 @@ model Event {
   checklistItems ChecklistItem[]
   notifications  Notification[]
   exceptions     EventException[]
+  forgottenReports ForgottenItemReport[]
 
   @@index([userId, startAt])
   @@index([userId, category])
@@ -253,4 +260,56 @@ model EventTemplate {
 
   @@unique([userId, name])
   @@map("event_templates")
+}
+
+// A user's own named packing list (e.g. "Gym bag"). Items are validated by the service (max 100, each {text, group}).
+model PackingTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String   @db.VarChar(80)
+  items     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@map("packing_templates")
+}
+
+// "I forgot this" reports: created ONLY when the user explicitly says so. An unchecked item is never counted.
+// One report per user + event + item + day (idempotent). Kept (event_id set to NULL) if the event is deleted.
+model ForgottenItemReport {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  eventId    String?  @map("event_id") @db.Uuid
+  itemText   String   @map("item_text") @db.VarChar(120)
+  textKey    String   @map("text_key") @db.VarChar(120) // lower-case, whitespace-collapsed itemText
+  reportedOn DateTime @map("reported_on") @db.Date
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, eventId, textKey, reportedOn])
+  @@index([userId, textKey])
+  @@map("forgotten_item_reports")
+}
+
+// A named place the user reuses (home, office, university...). Private: only ever read/written with the owner's id.
+model SavedPlace {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  label     String   @db.VarChar(60)
+  kind      String   @db.VarChar(12) // home | office | university | other
+  address   String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usedAsStart UserPreference[] @relation("DefaultStartPlace")
+
+  @@unique([userId, label])
+  @@index([userId])
+  @@map("saved_places")
 }

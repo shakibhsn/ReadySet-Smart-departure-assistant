@@ -6,6 +6,7 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware.js'
 import { createAuthRouter } from './routes/auth.routes.js'
 import checklistRoutes, { templatesRouter } from './routes/checklist.routes.js'
 import { occurrenceRouter, scheduleRouter, templateRouter } from './routes/schedule.routes.js'
+import { forgotRouter, packingRouter, packingTemplatesRouter, placesRouter } from './routes/packing.routes.js'
 import notificationRoutes from './routes/notification.routes.js'
 import departureRoutes from './routes/departure.routes.js'
 import eventRoutes from './routes/event.routes.js'
@@ -29,6 +30,10 @@ export function createApp(options = {}) {
   app.use('/api/events', checklistRoutes)
   app.use('/api/events', weatherRoutes)
   app.use('/api/events', occurrenceRouter)
+  app.use('/api/events', forgotRouter)
+  app.use('/api/places', placesRouter)
+  app.use('/api/packing-templates', packingTemplatesRouter)
+  app.use('/api/packing', packingRouter)
   app.use('/api/event-templates', templateRouter)
   app.use('/api/schedule', scheduleRouter)
   app.use('/api/events', eventRoutes)

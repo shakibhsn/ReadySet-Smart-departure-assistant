@@ -7,7 +7,7 @@ import { createItemSchema, updateItemSchema } from '../src/schemas/checklist.sch
 // Pure: no database, no network.
 describe('checklist templates', () => {
   it('every event category has a template, items are relevant and unique, custom is empty', () => {
-    expect(TEMPLATE_KEYS).toEqual(['university', 'office', 'appointment', 'travel', 'personal', 'other'])
+    expect(TEMPLATE_KEYS).toEqual(['university', 'office', 'interview', 'business', 'appointment', 'travel', 'gym', 'personal', 'other'])
     for (const key of TEMPLATE_KEYS) {
       const names = CHECKLIST_TEMPLATES[key].items.map((i) => i.text.toLowerCase())
       expect(new Set(names).size).toBe(names.length)

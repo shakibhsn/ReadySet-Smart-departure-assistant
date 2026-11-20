@@ -4,6 +4,7 @@ import { Alert } from '@/components/common/Alert'
 import { FormInput } from '@/components/common/FormInput'
 import { FormSelect } from '@/components/common/FormSelect'
 import { FormTextarea } from '@/components/common/FormTextarea'
+import { PlacePicker } from '@/components/events/PlacePicker'
 import { DeparturePreview } from '@/components/planner/DeparturePreview'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -91,6 +92,7 @@ export function EventForm({ initial, submitLabel, onSubmit, onCancel }) {
           <FormInput className="sm:col-span-2" label="Event title" required placeholder="e.g. Database Systems Class" value={form.title} error={errors.title} onChange={set('title')} />
           <FormSelect label="Category" required placeholder="Select a category" options={EVENT_CATEGORIES} value={form.category} error={errors.category} onChange={set('category')} />
           <FormInput label="Destination" icon={MapPin} placeholder="Building, address or place" value={form.destination} error={errors.destination} onChange={set('destination')} />
+          <PlacePicker onPick={(address) => setForm((f) => ({ ...f, destination: address }))} />
           <h3 className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700 sm:col-span-2"><span>When</span><span aria-hidden="true" className="h-px flex-1 bg-line" /></h3>
           <FormInput label="Event date" type="date" required value={form.date} error={errors.date} onChange={set('date')} />
           <FormInput label="Start time" type="time" required value={form.startTime} error={errors.startTime} onChange={set('startTime')} />

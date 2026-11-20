@@ -14,8 +14,13 @@ export function errorHandler(err, _req, res, _next) {
   // Unique constraint race (two simultaneous registrations with the same email).
   if (err?.code === 'P2002') return sendError(res, 409, 'A record with this value already exists')
 
-  // Unexpected: log only the message server-side, never the request body, and never leak details.
-  console.error('Unhandled error:', err?.name, err?.message)
-  if (env.NODE_ENV !== 'production' && err?.stack) console.error(err.stack)
+  // Unexpected: never log the request body. Database (Prisma) errors can embed the submitted values in their message
+  // and stack (e.g. a saved place's address), so for those only the error name and code are logged.
+  if (String(err?.name).startsWith('PrismaClient')) {
+    console.error('Unhandled database error:', err.name, err.code ?? '')
+  } else {
+    console.error('Unhandled error:', err?.name, err?.message)
+    if (env.NODE_ENV !== 'production' && err?.stack) console.error(err.stack)
+  }
   return sendError(res, 500, 'Something went wrong. Please try again later.')
 }

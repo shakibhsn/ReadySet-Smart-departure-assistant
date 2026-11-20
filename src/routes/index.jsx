@@ -14,6 +14,7 @@ import CreateEventPage from '@/pages/events/CreateEventPage'
 import EditEventPage from '@/pages/events/EditEventPage'
 import EventDetailPage from '@/pages/events/EventDetailPage'
 import ChecklistPage from '@/pages/checklist/ChecklistPage'
+import PlacesPage from '@/pages/places/PlacesPage'
 import PlannerPage from '@/pages/planner/PlannerPage'
 import NotificationsPage from '@/pages/notifications/NotificationsPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
@@ -40,6 +41,7 @@ export default function AppRoutes() {
           <Route path="events/:id/edit" element={<EditEventPage />} />
           <Route path="checklist" element={<ChecklistPage />} />
           <Route path="planner" element={<PlannerPage />} />
+          <Route path="places" element={<PlacesPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

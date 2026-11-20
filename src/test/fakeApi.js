@@ -13,6 +13,9 @@ export function createFakeApi({ users, events = {} }) {
   const checklists = {} // token -> eventId -> items
   let conflictsResult = { from: null, to: null, eventsChecked: 0, summary: { high: 0, medium: 0 }, conflicts: [], assumptions: ['Events without a duration are assumed to last 60 minutes.'] }
   const templates = {} // token -> event templates
+  const places = {} // token -> { list, defaultId }
+  const packing = {} // token -> personal packing templates
+  let forgottenList = []
   const notes = {} // token -> notifications (newest first)
   const notePrefs = {} // token -> notification preferences
   const defaultPrefs = { enabled: true, upcoming: true, prep: true, departure: true, checklist: true, leadMinutes: 10, browser: false }
@@ -136,6 +139,43 @@ export function createFakeApi({ users, events = {} }) {
     }
     const occMatch = path.match(/^\/events\/([^/]+)\/occurrences(\/skip|\/restore)?$/)
     if (occMatch) return ok({ skipped: true, restored: true, occurrence: null })
+    // ---- saved places, packing templates, forgotten items (simplified mirror; per-token isolation) ----
+    if (path === '/places' || path.startsWith('/places/')) {
+      const book = (places[token] ??= { list: [], defaultId: null })
+      const view = () => ({ places: book.list.map((x) => ({ ...x, isDefaultStart: x.id === book.defaultId })), defaultStartPlaceId: book.defaultId })
+      const id = path.split('/')[2]
+      if (path === '/places' && method === 'GET') return ok(view())
+      if (path === '/places' && method === 'POST') {
+        if (book.list.some((x) => x.label === body.label)) return respond(409, { success: false, message: 'You already have a place with this name', errors: [] })
+        const place = { id: `place-${++seq}`, label: body.label, kind: body.kind ?? 'other', address: body.address }
+        book.list.push(place)
+        if (body.makeDefault) book.defaultId = place.id
+        return respond(201, { success: true, message: 'Place saved', data: { place: { ...place, isDefaultStart: place.id === book.defaultId } } })
+      }
+      if (path === '/places/default' && method === 'PATCH') {
+        book.defaultId = body.placeId
+        return ok({ defaultStartPlaceId: book.defaultId })
+      }
+      const place = book.list.find((x) => x.id === id)
+      if (!place) return respond(404, { success: false, message: 'Place not found', errors: [] })
+      if (method === 'PATCH') { Object.assign(place, body); return ok({ place: { ...place, isDefaultStart: place.id === book.defaultId } }) }
+      if (method === 'DELETE') { book.list.splice(book.list.indexOf(place), 1); if (book.defaultId === id) book.defaultId = null; return ok({ defaultStartPlaceId: book.defaultId }) }
+    }
+    if (path === '/packing-templates' || path.startsWith('/packing-templates/')) {
+      const list = (packing[token] ??= [])
+      if (path === '/packing-templates' && method === 'GET') return ok({ templates: structuredClone(list) })
+      if (path === '/packing-templates' && method === 'POST') {
+        const items = body.fromEventId ? ((checklists[token] ??= {})[body.fromEventId] ?? []).map((i) => ({ text: i.text, group: i.group })) : body.items
+        const t = { id: `pack-${++seq}`, name: body.name, items }
+        list.push(t)
+        return respond(201, { success: true, message: 'Packing template saved', data: { template: t } })
+      }
+      const i = list.findIndex((t) => t.id === path.split('/')[2])
+      if (i < 0) return respond(404, { success: false, message: 'Template not found', errors: [] })
+      if (method === 'DELETE') { list.splice(i, 1); return ok({}, 'Packing template deleted') }
+    }
+    if (path === '/packing/forgotten') return ok({ items: forgottenList })
+    if (path.startsWith('/events/') && path.endsWith('/forgot') && method === 'POST') return ok({ reported: true, alreadyReported: false })
     // ---- notifications (simplified mirror of the backend; per-token isolation) ----
     if (path === '/users/me/notification-preferences') {
       const prefs = (notePrefs[token] ??= { ...defaultPrefs })
@@ -183,10 +223,12 @@ export function createFakeApi({ users, events = {} }) {
         return respond(201, { success: true, message: 'Item added', data: { item: { ...item } } })
       }
       if (tail === 'apply-template') {
-        const names = event.category === 'university' ? ['Laptop', 'Charger'] : []
+        const own = body.personalTemplateId ? (packing[token] ?? []).find((t) => t.id === body.personalTemplateId) : null
+        if (body.personalTemplateId && !own) return respond(404, { success: false, message: 'Template not found', errors: [] })
+        const names = own ? own.items.map((i) => i.text) : event.category === 'university' ? ['Laptop', 'Charger'] : []
         const fresh = names.filter((n) => !items.some((i) => i.text === n))
         fresh.forEach((n) => items.push(make(n, 'Electronics')))
-        return ok({ ...view(), template: event.category, added: fresh.length, skipped: names.length - fresh.length })
+        return ok({ ...view(), template: own ? `personal:${own.name}` : event.category, added: fresh.length, skipped: names.length - fresh.length })
       }
       const item = items.find((i) => i.id === tail)
       if (!item) return respond(404, { success: false, message: 'Checklist item not found', errors: [] })
@@ -236,10 +278,14 @@ export function createFakeApi({ users, events = {} }) {
     setWeather: (w) => { weatherResult = w },
     /** Seed notifications for a token (newest first). */
     seedNotifications: (token, items) => { (notes[token] ??= []).push(...items.map((n, i) => ({ id: `note-${++seq}-${i}`, eventId: null, type: 'PREP_NOW', category: 'preparation', body: 'Body', read: false, createdAt: new Date().toISOString(), ...n }))) },
+    setForgotten: (list) => { forgottenList = list },
+    seedPackingTemplates: (token, list) => { (packing[token] ??= []).push(...list.map((t, n) => ({ id: `pack-seed-${n}`, ...t }))) },
+    seedPlaces: (token, list, defaultId = null) => { const b = (places[token] ??= { list: [], defaultId: null }); b.list.push(...list.map((x, n) => ({ id: `place-seed-${n}`, kind: 'other', ...x }))); b.defaultId = defaultId },
     setConflicts: (c) => { conflictsResult = { ...conflictsResult, ...c } },
     seedTemplates: (token, list) => { (templates[token] ??= []).push(...list.map((t, i) => ({ id: `tpl-seed-${i}`, destination: null, notes: null, timezone: null, durationMinutes: null, recurrence: null, ...t }))) },
     setNotificationPrefs: (token, p) => { notePrefs[token] = { ...defaultPrefs, ...p } },
     notifications: (token) => notes[token] ?? [],
+    seedChecklist: (token, eventId, items) => { ((checklists[token] ??= {})[eventId] ??= []).push(...items) },
     checklist: (token, eventId) => (checklists[token] ??= {})[eventId] ?? [],
     clearOverrides: () => (overrides.length = 0),
     respond,

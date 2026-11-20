@@ -54,10 +54,17 @@ export async function addItem(userId, eventId, { text, group }) {
   return toPublic(created)
 }
 
-export async function applyTemplate(userId, eventId, { template } = {}) {
+export async function applyTemplate(userId, eventId, { template, personalTemplateId } = {}) {
   const event = await ownEvent(userId, eventId)
-  const key = template ?? event.category
-  const tpl = CHECKLIST_TEMPLATES[key]
+  let key = template ?? event.category
+  let tpl = CHECKLIST_TEMPLATES[key]
+  if (personalTemplateId) {
+    // One of MY packing templates (404 for anyone else's).
+    const own = await prisma.packingTemplate.findFirst({ where: { id: personalTemplateId, userId } })
+    if (!own) throw new AppError(404, 'Template not found')
+    key = `personal:${own.name}`
+    tpl = { items: Array.isArray(own.items) ? own.items : [] }
+  }
   if (!tpl) throw new AppError(400, 'Validation failed', [{ field: 'template', message: 'Unknown template' }])
   const existing = await readItems(userId, eventId)
   const fresh = tpl.items.filter((t) => !existing.some((e) => sameName(e.text, t.text))) // duplicates are skipped

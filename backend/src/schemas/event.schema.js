@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { isDateString, isInstantString, isLocalDateTimeString, isValidTimezone } from '../utils/timezone.js'
 
-export const EVENT_CATEGORIES = ['university', 'office', 'appointment', 'travel', 'personal', 'other']
+export const EVENT_CATEGORIES = ['university', 'office', 'interview', 'business', 'appointment', 'travel', 'gym', 'personal', 'other']
 export const EVENT_SORTS = ['startAt', '-startAt', 'createdAt', '-createdAt']
 
 const timezone = z.string().refine(isValidTimezone, 'Unknown timezone (use an IANA name such as Asia/Dhaka)')

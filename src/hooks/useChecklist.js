@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { reportForgotten } from '@/services/packingApi'
 import { addChecklistItem, applyChecklistTemplate, deleteChecklistItem, getChecklist, setChecklistItemDone, updateChecklistItem } from '@/services/checklistApi'
 import { getProgress } from '@/utils/events'
 
@@ -62,6 +63,11 @@ export function useChecklist(eventId) {
     await deleteChecklistItem(eventId, item.id)
     setItems((list) => list.filter((i) => i.id !== item.id))
   })
+  /** An explicit user report. Nothing is ever inferred from unchecked items. */
+  const forgot = (item) => run(async () => {
+    const r = await reportForgotten(eventId, item.id)
+    setNotice(r.reported ? `Noted: you forgot "${item.text}". If this keeps happening, ReadySet will suggest it next time.` : `You already noted "${item.text}" today.`)
+  })
   const applyTemplate = (template) => run(async () => {
     const result = await applyChecklistTemplate(eventId, template)
     setItems(() => result.items)
@@ -76,6 +82,6 @@ export function useChecklist(eventId) {
     actionError,
     notice,
     reload: () => setAttempt((a) => a + 1),
-    toggle, add, edit, remove, applyTemplate,
+    toggle, add, edit, remove, applyTemplate, forgot,
   }
 }

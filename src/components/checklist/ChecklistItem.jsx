@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Check, Pencil, Trash2, X } from 'lucide-react'
+import { Check, PackageX, Pencil, Trash2, X } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 
 const iconButton = 'flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-colors sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100'
 
 /** One checklist row: toggle, optional inline edit (name), optional delete. `item` = { id, text, group, done }. */
-export function ChecklistItem({ item, onToggle, onEdit, onDelete, showGroup = false }) {
+export function ChecklistItem({ item, onToggle, onEdit, onDelete, onForgot, showGroup = false }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(item.text)
 
@@ -49,6 +49,11 @@ export function ChecklistItem({ item, onToggle, onEdit, onDelete, showGroup = fa
         <span className={cn('text-sm font-medium', item.done && 'text-muted line-through')}>{item.text}</span>
         {showGroup && <span className="ml-auto rounded-full bg-canvas px-2 py-0.5 text-xs text-muted">{item.group}</span>}
       </label>
+      {onForgot && (
+        <button type="button" onClick={() => onForgot(item)} aria-label={`I forgot ${item.text}`} title="I forgot this" className={cn(iconButton, 'hover:bg-amber-50 hover:text-amber-700')}>
+          <PackageX className="size-4" />
+        </button>
+      )}
       {onEdit && (
         <button type="button" onClick={() => { setDraft(item.text); setEditing(true) }} aria-label={`Edit ${item.text}`} className={cn(iconButton, 'hover:bg-brand-50 hover:text-brand-700')}>
           <Pencil className="size-4" />
