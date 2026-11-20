@@ -19,21 +19,30 @@ backend/               Express 5 · Prisma 6 · PostgreSQL · JWT · bcrypt · Z
 npm install            # frontend
 npm run setup:api      # backend (runs npm install inside backend/)
 ```
+### 1b. Create the isolated PostgreSQL environment for ReadySet
 
-### 1b. Create a dedicated PostgreSQL database for ReadySet
-ReadySet must **never** share a database with another project. Do this once.
+ReadySet must **never** share a database or role with another project. It uses its own resources: role `readyset_isolated_app` and databases `readyset_isolated_dev`, `readyset_isolated_test`, `readyset_isolated_shadow`. Older `readyset_app` / `readyset_dev` / `readyset_test` objects are never touched.
 
-1. See which databases/roles already exist (read-only) so you can avoid any name clash:
-   ```powershell
-   & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -h localhost -U postgres -c "\l" -c "\du"
-   ```
-   You need `readyset_dev`, `readyset_test` and the role `readyset_app` to be **absent**. If any exist, pick other names (edit the SQL file and the URLs below).
-2. Create them. [`backend/scripts/setup-local-db.sql`](backend/scripts/setup-local-db.sql) only runs `CREATE ROLE` / `CREATE DATABASE`: no `DROP`, no `TRUNCATE`. If a name already exists it stops with an error instead of touching anything.
-   ```powershell
-   & "C:\Program Files\PostgreSQL\17\bin\psql.exe" -h localhost -U postgres -v ON_ERROR_STOP=1 -v app_password="CHOOSE_A_PASSWORD" -f backend/scripts/setup-local-db.sql
-   ```
-   (You will be prompted for the `postgres` superuser password. The role gets `CREATEDB` because `prisma migrate dev` uses a temporary shadow database.)
+**Option A (script):** `npm run db:setup` (root or `backend/`, in a real terminal). It asks for your PostgreSQL administrator (`postgres`) password (hidden), inspects all four names read-only and **stops if any exists**. Otherwise it creates the role and databases, sets the privileges below, verifies ownership, writes only `DATABASE_URL` + `SHADOW_DATABASE_URL` in `backend/.env` and `DATABASE_URL` in `backend/.env.test` (both gitignored), then runs `prisma migrate deploy` per database with explicit, validated URLs. Each run writes a scrubbed `backend/.db-setup.log`.
 
+**Option B (pgAdmin):** pgAdmin may or may not still be authenticated, and a password saved in pgAdmin cannot be viewed or recovered. Open a server entry whose role is the administrator (e.g. `postgres`). If pgAdmin asks for the password, you need the real administrator password; without it nothing here can proceed. Do not change PostgreSQL authentication settings to get around this: if the password is truly lost, resetting it is a deliberate administrator action for your own PostgreSQL installation (see the PostgreSQL documentation on `pg_hba.conf`), and it affects every project on that server, so ReadySet's scripts never do it. Once connected, run [`backend/scripts/setup-local-db.sql`](backend/scripts/setup-local-db.sql) step by step (step 0 must return no rows), put the matching URLs in `backend/.env` (dev + shadow) and `backend/.env.test` (test), then run `npm --prefix backend run db:deploy` and `npm --prefix backend run db:migrate:test`.
+
+**Privileges.** The role is `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOINHERIT` and owns only the three databases. On each: `REVOKE ALL ON DATABASE … FROM PUBLIC`, `GRANT CONNECT, TEMPORARY … TO readyset_isolated_app`, then inside the database `REVOKE ALL ON SCHEMA public FROM PUBLIC` and `GRANT USAGE, CREATE ON SCHEMA public TO readyset_isolated_app`.
+`REVOKE … FROM PUBLIC` *does* stop ordinary roles from connecting to or creating objects in these databases. It does *not* stop superusers (e.g. `postgres`), roles with the `BYPASSRLS`/owner-like rights, or roles that were explicitly granted access; it does not affect other databases; and it does not hide the databases' names from `\l`.
+
+**Shadow database (development only).** `prisma migrate dev` needs a scratch database (Prisma 6.19.3: `shadowDatabaseUrl = env("SHADOW_DATABASE_URL")` in the `datasource` block). With it set, `migrate dev` uses only `readyset_isolated_dev` and `readyset_isolated_shadow`, and **resets the shadow database**, so it must target exactly `readyset_isolated_shadow` on the same server. `SHADOW_DATABASE_URL` lives only in `backend/.env`; the API does not read it, `.env.test` does not need it (`migrate deploy` never uses a shadow database), and in production the API **refuses to start** if it is set. Never put it in deployment configuration. If `db:migrate:test` ever complains that it is missing, add it to `.env.test` manually.
+**Runtime isolation (API and tests).** `backend/src/config/env.js` validates the resolved `DATABASE_URL` before anything can open a database connection: in development it must be exactly `readyset_isolated_dev`, in tests exactly `readyset_isolated_test` (a database merely named `*_test` is refused), user `readyset_isolated_app`, local allowlisted host/port. If `DATABASE_URL` is also set in your terminal/environment and differs from the env file, the API and tests **refuse to start** instead of silently choosing one (unset the variable). `SHADOW_DATABASE_URL`, if present, must be exactly `readyset_isolated_shadow`; `DIRECT_URL` / `TEST_DATABASE_URL` are refused because ReadySet does not use them. Production is exempt from the exact-name rule (its database is deployment-specific) but still refuses a leaked `SHADOW_DATABASE_URL`. Until the isolated setup is done, an existing `.env` with the old names makes the API refuse to start, by design.
+**Server allowlist.** Setup and migrations only talk to a local PostgreSQL: host `localhost` or `127.0.0.1`, port `5432` or `5433` (`ALLOWED_HOSTS` / `ALLOWED_PORTS` in `backend/scripts/dbGuard.mjs`). `PGHOST` / `PGPORT` are read by the setup script, but any other value makes it stop **before** the password prompt or any SQL; other `PG*` variables (e.g. `PGHOSTADDR`, `PGSERVICE`) are never passed to `psql`. There is no fallback to another server.
+
+**Your existing env files.** Before changing `backend/.env` / `.env.test`, `npm run db:setup` saves copies as `.env.backup-<timestamp>` (gitignored, they contain the OLD credentials: keep them private or delete them after checking). Only the `DATABASE_URL` / `SHADOW_DATABASE_URL` lines are replaced, and only after the new role and databases were created and verified. Open both files afterwards and confirm the URLs point at `readyset_isolated_*`.
+
+**Guarded migrations.** `npm run db:migrate` (migrate dev), `db:deploy` and `db:migrate:test` run through `backend/scripts/prisma-safe.mjs`, which re-reads `backend/.env` / `.env.test` on every run and refuses (running nothing, correcting nothing, printing no URL) unless every URL has the right protocol, local host, explicit port, user `readyset_isolated_app` and exact database (dev / test / shadow). Inherited `DATABASE_URL`/`PG*` variables are ignored. Only `dev` and `deploy` are possible; there is no reset or db push. Database-free tests: `npm --prefix backend run test:pure`.
+
+**Partial-failure recovery (nothing is ever dropped automatically).** If setup stops after creating something, the log and summary list what exists. Then:
+1. Inspect in pgAdmin/psql (read-only): `select rolname from pg_roles where rolname = 'readyset_isolated_app';` and `select datname, pg_get_userbyid(datdba) from pg_database where datname like 'readyset_isolated_%';`.
+2. If everything that exists is owned by `readyset_isolated_app` and was clearly created by the failed run, finish the missing steps manually using `setup-local-db.sql` (skip statements for objects that exist) and set the URLs in the env files yourself. If the role password was lost, an administrator can set a new one for that role only: `ALTER ROLE readyset_isolated_app PASSWORD '…'` (run by you, never by the script).
+3. Only you may decide to remove leftover isolated objects, manually, after confirming the name and owner. The script never does.
+4. Re-running `npm run db:setup` while any isolated name exists will stop immediately by design.
 ### 1c. Create the real `.env` files (never committed)
 ```powershell
 Copy-Item backend\.env.example      backend\.env
@@ -41,24 +50,24 @@ Copy-Item backend\.env.test.example backend\.env.test
 Copy-Item .env.example              .env.local      # frontend; no secrets in it
 ```
 Edit `backend/.env`:
-- `DATABASE_URL` → `postgresql://readyset_app:CHOOSE_A_PASSWORD@localhost:5432/readyset_dev?schema=public` (special characters in the password must be URL-encoded).
+- `DATABASE_URL` → `postgresql://readyset_isolated_app:CHOOSE_A_PASSWORD@localhost:5432/readyset_isolated_dev?schema=public` (special characters in the password must be URL-encoded).
 - `JWT_SECRET` → at least 32 random characters:
   ```bash
   node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
   ```
 - `FRONTEND_URL=http://localhost:5173` (the only origin CORS will allow).
 
-Edit `backend/.env.test` so `DATABASE_URL` points at `readyset_test`. The backend **refuses to run tests** unless the database name ends in `_test`.
+Edit `backend/.env.test` so `DATABASE_URL` points at `readyset_isolated_test`. The backend **refuses to run tests** unless the database name ends in `_test`.
 
 The server validates all variables at startup and prints which ones are missing/invalid (never their values).
 
 ### 1d. Create the tables
 ```bash
 npm run db:generate    # generate Prisma Client
-npm run db:migrate     # applies every migration in prisma/migrations (init, add_token_version, add_events_and_recurrence, add_email_system) to readyset_dev
-npm --prefix backend run db:migrate:test   # applies the same migration to readyset_test
+npm run db:migrate     # applies every migration in prisma/migrations (init, add_token_version, add_events_and_recurrence, add_email_system) to readyset_isolated_dev
+npm --prefix backend run db:migrate:test   # applies the same migration to readyset_isolated_test
 ```
-`migrate dev` applies the checked-in migrations to the empty `readyset_dev`. Port 5174 is used for the API because 4000 is commonly taken by other local projects. (Vite also falls back to 5174 when 5173 is busy: if you start a second frontend dev server, stop it or pass `--port` so it does not collide with the API.) Never run `prisma migrate reset` or `db push --force-reset` on a database you care about.
+`migrate dev` applies the checked-in migrations to the empty `readyset_isolated_dev`. Port 5174 is used for the API because 4000 is commonly taken by other local projects. (Vite also falls back to 5174 when 5173 is busy: if you start a second frontend dev server, stop it or pass `--port` so it does not collide with the API.) Never run `prisma migrate reset` or `db push --force-reset` on a database you care about.
 
 ## 2. Running (two terminals)
 ```bash
@@ -75,7 +84,7 @@ npm run dev            # terminal 2 → http://localhost:5173
 | `npm run db:migrate` | Apply/create migrations on the **dev** database |
 | `npm --prefix backend run db:migrate:test` | Apply migrations on the **test** database |
 | `npm run test` | Frontend tests (Vitest + Testing Library, mocked `fetch`) |
-| `npm run test:api` | Backend tests (Vitest + Supertest, real `readyset_test` DB). Uses `backend/scripts/run-tests.mjs`, which re-runs the suite only if the Vitest *worker process* crashes (see §6); real test failures are never retried. `npm --prefix backend run test:raw` runs plain Vitest. |
+| `npm run test:api` | Backend tests (Vitest + Supertest, real `readyset_isolated_test` DB). Uses `backend/scripts/run-tests.mjs`, which re-runs the suite only if the Vitest *worker process* crashes (see §6); real test failures are never retried. `npm --prefix backend run test:raw` runs plain Vitest. |
 | `npm run lint` | ESLint for frontend and backend |
 
 ## 4. API

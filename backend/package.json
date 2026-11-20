@@ -7,13 +7,14 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "node scripts/prisma-safe.mjs dev",
     "db:setup": "node scripts/setup-local-db.mjs",
-    "db:deploy": "prisma migrate deploy",
-    "db:migrate:test": "node --env-file=.env.test node_modules/prisma/build/index.js migrate deploy",
+    "db:deploy": "node scripts/prisma-safe.mjs deploy",
+    "db:migrate:test": "node scripts/prisma-safe.mjs deploy --test",
     "db:validate": "prisma validate",
     "test": "node scripts/run-tests.mjs",
-    "test:raw": "vitest run"
+    "test:raw": "vitest run",
+    "test:pure": "vitest run --config vitest.pure.config.js"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

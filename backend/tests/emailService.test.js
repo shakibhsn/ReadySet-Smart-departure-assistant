@@ -1,4 +1,8 @@
 import { spawnSync } from 'node:child_process'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import { prisma } from '../src/config/database.js'
 import { emailConfig } from '../src/config/email.config.js'
@@ -149,14 +153,16 @@ describe('provider adapters', () => {
 describe('startup configuration validation (child process, never sends anything)', () => {
   const baseEnv = {
     ...process.env,
-    DATABASE_URL: 'postgresql://u:p@127.0.0.1:1/cfg_test',
     JWT_SECRET: 'a'.repeat(40),
     FRONTEND_URL: 'http://localhost:5173',
   }
+  // Runs from an EMPTY directory so the real backend/.env is never loaded; uses the isolated URL for the mode.
+  const envUrl = pathToFileURL(path.resolve('src/config/env.js')).href
+  const dbFor = (nodeEnv) => `postgresql://readyset_isolated_app:PLACEHOLDER@localhost:5432/readyset_isolated_${nodeEnv === 'test' ? 'test' : 'dev'}?schema=public`
   const load = (overrides) =>
-    spawnSync(process.execPath, ['--input-type=module', '-e', "import('./src/config/env.js').then((m) => console.log('LOADED', m.env.EMAIL_MODE, m.env.APP_BASE_URL))"], {
-      cwd: new URL('..', import.meta.url),
-      env: { ...baseEnv, ...overrides },
+    spawnSync(process.execPath, ['--input-type=module', '-e', `import(${JSON.stringify(envUrl)}).then((m) => console.log('LOADED', m.env.EMAIL_MODE, m.env.APP_BASE_URL))`], {
+      cwd: mkdtempSync(path.join(tmpdir(), 'rs-cfg-')),
+      env: { ...baseEnv, DATABASE_URL: dbFor(overrides.NODE_ENV), ...overrides },
       encoding: 'utf8',
     })
 

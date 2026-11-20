@@ -5,9 +5,9 @@ import { databaseNameOf, env } from '../src/config/env.js'
 import { idle, setEmailProvider } from '../src/services/email/emailService.js'
 import { mailbox } from './helpers.js'
 
-// env.js already refuses to load unless the database name ends with "_test";
+// env.js already refuses to load unless the database is exactly readyset_isolated_test;
 // this second check guards the delete below.
-if (!databaseNameOf(env.DATABASE_URL).endsWith('_test')) {
+if (databaseNameOf(env.DATABASE_URL) !== 'readyset_isolated_test') {
   throw new Error('Refusing to run against a non-test database')
 }
 // Automated tests must never send real email.

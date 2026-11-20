@@ -1,9 +1,16 @@
+import { existsSync, readFileSync } from 'node:fs'
 import dotenv from 'dotenv'
 import { z } from 'zod'
+import { checkRuntime, parseEnvText } from '../../scripts/dbGuard.mjs'
+
+// Values that were already in the environment (the shell) BEFORE the env file is loaded. dotenv never
+// overrides them, so we must be able to detect a shell value that disagrees with the file.
+const shellDatabaseUrl = process.env.DATABASE_URL
+const envFilePath = process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
 
 // Tests load .env.test so they can never pick up the development database by accident.
 dotenv.config({
-  path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
+  path: envFilePath,
   quiet: true,
 })
 
@@ -60,9 +67,25 @@ function loadEnv() {
   }
   const env = result.data
 
-  // Safety net: automated tests delete rows, so they may only touch a "*_test" database.
-  if (env.NODE_ENV === 'test' && !databaseNameOf(env.DATABASE_URL).endsWith('_test')) {
-    console.error('Refusing to run tests: the database name in .env.test must end with "_test".')
+  // Database isolation (development and test): ReadySet may only use its own isolated databases, on the
+  // approved local server. Runs before anything can open a database connection.
+  const fileDatabaseUrl = existsSync(envFilePath) ? parseEnvText(readFileSync(envFilePath, 'utf8')).DATABASE_URL : undefined
+  const isolationProblems = checkRuntime({
+    nodeEnv: env.NODE_ENV,
+    databaseUrl: env.DATABASE_URL,
+    shellDatabaseUrl,
+    fileDatabaseUrl,
+    shadowUrl: process.env.SHADOW_DATABASE_URL || undefined,
+    present: ['DIRECT_URL', 'TEST_DATABASE_URL'].filter((n) => process.env[n]),
+  })
+  if (isolationProblems.length > 0) {
+    console.error(`Refusing to start: the database configuration is not ReadySet's isolated setup:\n${isolationProblems.map((p) => `  - ${p}`).join('\n')}\nSee README "Isolated PostgreSQL environment". No database connection was opened.`)
+    process.exit(1)
+  }
+  // SHADOW_DATABASE_URL is a development-only Prisma setting (migrate dev). It is not a runtime variable:
+  // refuse to start in production if it leaked in, so a local shadow URL can never be inherited there.
+  if (env.NODE_ENV === 'production' && process.env.SHADOW_DATABASE_URL) {
+    console.error('Refusing to start: SHADOW_DATABASE_URL must not be set in production (it is for local `prisma migrate dev` only).')
     process.exit(1)
   }
   // ---- Email configuration safety checks (names only, never values) ----
