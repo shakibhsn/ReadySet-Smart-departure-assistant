@@ -2,6 +2,7 @@ import { DateTime } from 'luxon'
 import { prisma } from '../config/database.js'
 import { AppError } from '../utils/apiResponse.js'
 import { DEFAULT_TIMEZONE, isDateString, localParts, parseStart, startOfLocalDay, toZone } from '../utils/timezone.js'
+import { invalidateEventReminders } from './notification/notification.service.js'
 import { expandOccurrences } from './recurrence.service.js'
 
 // SECURITY (IDOR): every query below filters by `userId`, which always comes from the verified JWT
@@ -201,7 +202,13 @@ export async function updateEvent(userId, id, input) {
     data.timezone = timezone
   }
 
-  return prisma.$transaction(async (tx) => {
+  // Did anything that moves a reminder change? (Compare real values: re-saving identical numbers is not a change.)
+  const scheduleChanged =
+    (timeChanged && (start.toMillis() !== existing.startAt.getTime() || timezone !== existing.timezone)) ||
+    ['travelDurationMinutes', 'preparationMinutes', 'arrivalBufferMinutes'].some((k) => input[k] !== undefined && input[k] !== existing[k]) ||
+    input.recurrence !== undefined
+
+  const result = await prisma.$transaction(async (tx) => {
     const ruleId = existing.recurrenceRuleId
     if (ruleChange === null && ruleId) {
       await tx.event.update({ where: { id, userId }, data: { recurrenceRuleId: null, isRecurring: false } })
@@ -216,6 +223,9 @@ export async function updateEvent(userId, id, input) {
     const updated = await tx.event.update({ where: { id, userId }, data, include: withRule })
     return toPublicEvent(updated)
   })
+  // Unread reminders built from the OLD schedule are removed; the next sweep creates correct ones.
+  if (scheduleChanged) await invalidateEventReminders(userId, id)
+  return result
 }
 
 export async function deleteEvent(userId, id) {

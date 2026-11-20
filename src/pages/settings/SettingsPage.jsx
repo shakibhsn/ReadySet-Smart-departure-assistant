@@ -6,7 +6,7 @@ import { FormInput } from '@/components/common/FormInput'
 import { Avatar } from '@/components/layout/Avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Switch } from '@/components/ui/switch'
+import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard'
 import { EmailNotificationsCard } from '@/components/settings/EmailNotificationsCard'
 import { EmailSecurityCard } from '@/components/settings/EmailSecurityCard'
 import { useAppState } from '@/hooks/useAppState'
@@ -21,12 +21,6 @@ const THEMES = [
   { value: 'light', label: 'Light', icon: Sun },
   { value: 'dark', label: 'Dark', icon: Moon },
   { value: 'system', label: 'System', icon: Monitor },
-]
-
-const REMINDERS = [
-  { key: 'preparation', title: 'Preparation reminder', desc: 'Alert me when it is time to start getting ready.' },
-  { key: 'departure', title: 'Departure reminder', desc: 'Alert me when it is time to leave.' },
-  { key: 'event', title: 'Event reminder', desc: 'Remind me shortly before an event starts.' },
 ]
 
 function Section({ title, description, children }) {
@@ -148,18 +142,6 @@ export default function SettingsPage() {
           </fieldset>
         </Section>
 
-        <Section title="Notification preferences" description="Choose which reminders you want. Saved on this device only for now.">
-          {REMINDERS.map(({ key, title, desc }) => (
-            <div key={key} className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold">{title}</p>
-                <p className="text-sm text-muted">{desc}</p>
-              </div>
-              <Switch label={title} checked={local.reminders[key]} onCheckedChange={(v) => { setLocal({ ...local, reminders: { ...local.reminders, [key]: v } }); touch() }} />
-            </div>
-          ))}
-        </Section>
-
         <Section title="General" description="Appearance and region.">
           <fieldset>
             <legend className="mb-2 text-sm font-semibold">Theme</legend>
@@ -193,6 +175,7 @@ export default function SettingsPage() {
 
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
       <EmailSecurityCard />
+      <NotificationPreferencesCard />
       <EmailNotificationsCard />
     </div>
     </div>

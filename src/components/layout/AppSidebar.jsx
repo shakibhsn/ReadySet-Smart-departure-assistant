@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { LogOut, X } from 'lucide-react'
 import { Logo } from '@/components/common/Logo'
 import { Avatar } from './Avatar'
-import { useAppState } from '@/hooks/useAppState'
+import { useNotifications } from '@/hooks/useNotifications'
 import { useAuth } from '@/hooks/useAuth'
 import { getInitials } from '@/utils/format'
 import { NAV_ITEMS } from '@/routes/navigation'
@@ -10,9 +10,8 @@ import { cn } from '@/lib/utils'
 
 export function AppSidebar({ onNavigate, onClose, showClose = false }) {
   const navigate = useNavigate()
-  const { notifications } = useAppState()
+  const { unreadCount: unread } = useNotifications()
   const { user, logout } = useAuth()
-  const unread = notifications.filter((n) => !n.read).length
 
   const handleLogout = async () => {
     onNavigate?.()

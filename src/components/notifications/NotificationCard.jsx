@@ -1,4 +1,5 @@
-import { AlarmClock, CalendarDays, Check, Info, Route } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { AlarmClock, CalendarDays, Check, Info, Route, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NOTIFICATION_CATEGORIES } from '@/data/notifications'
 import { formatRelative } from '@/utils/format'
@@ -11,7 +12,7 @@ const ICONS = {
   system: { icon: Info, tone: 'bg-slate-100 text-slate-500' },
 }
 
-export function NotificationCard({ notification, onMarkRead }) {
+export function NotificationCard({ notification, onMarkRead, onDelete }) {
   const { icon: Icon, tone } = ICONS[notification.category] ?? ICONS.system
   const label = NOTIFICATION_CATEGORIES.find((c) => c.value === notification.category)?.label
 
@@ -33,14 +34,27 @@ export function NotificationCard({ notification, onMarkRead }) {
         <p className="mt-0.5 text-sm text-muted">{notification.body}</p>
         <p className="mt-2 text-xs text-muted">
           {label} · {formatRelative(notification.createdAt)}
+          {notification.eventId && (
+            <>
+              {' · '}
+              <Link to={`/events/${notification.eventId}`} className="font-semibold text-brand-700 hover:underline">View event</Link>
+            </>
+          )}
         </p>
       </div>
-      {!notification.read && (
-        <Button variant="ghost" size="sm" onClick={() => onMarkRead(notification.id)} aria-label={`Mark "${notification.title}" as read`} className="self-start">
-          <Check className="size-4" />
-          <span className="hidden sm:inline">Mark read</span>
-        </Button>
-      )}
+      <div className="flex shrink-0 items-start gap-1 self-start">
+        {!notification.read && (
+          <Button variant="ghost" size="sm" onClick={() => onMarkRead(notification.id)} aria-label={`Mark "${notification.title}" as read`}>
+            <Check className="size-4" />
+            <span className="hidden sm:inline">Mark read</span>
+          </Button>
+        )}
+        {onDelete && (
+          <Button variant="ghost" size="sm" onClick={() => onDelete(notification.id)} aria-label={`Delete "${notification.title}"`} className="hover:bg-rose-50 hover:text-rose-600">
+            <Trash2 className="size-4" />
+          </Button>
+        )}
+      </div>
     </li>
   )
 }

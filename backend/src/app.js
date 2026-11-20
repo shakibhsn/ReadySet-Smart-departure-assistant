@@ -5,6 +5,7 @@ import { env } from './config/env.js'
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js'
 import { createAuthRouter } from './routes/auth.routes.js'
 import checklistRoutes, { templatesRouter } from './routes/checklist.routes.js'
+import notificationRoutes from './routes/notification.routes.js'
 import departureRoutes from './routes/departure.routes.js'
 import eventRoutes from './routes/event.routes.js'
 import weatherRoutes from './routes/weather.routes.js'
@@ -29,6 +30,7 @@ export function createApp(options = {}) {
   app.use('/api/events', eventRoutes)
   app.use('/api/checklist-templates', templatesRouter)
   app.use('/api/departure', departureRoutes)
+  app.use('/api/notifications', notificationRoutes)
 
   app.use(notFoundHandler)
   app.use(errorHandler)

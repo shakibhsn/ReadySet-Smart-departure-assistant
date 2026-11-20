@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, ChevronDown, LogOut, Menu, Search, Settings } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { ChevronDown, LogOut, Menu, Search, Settings } from 'lucide-react'
 import { Avatar } from './Avatar'
-import { useAppState } from '@/hooks/useAppState'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { useAuth } from '@/hooks/useAuth'
 import { getInitials } from '@/utils/format'
 import { getPageTitle } from '@/routes/navigation'
@@ -10,9 +10,7 @@ import { getPageTitle } from '@/routes/navigation'
 export function AppNavbar({ onMenuClick }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const { notifications } = useAppState()
   const { user, logout } = useAuth()
-  const unread = notifications.filter((n) => !n.read).length
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
 
@@ -57,16 +55,7 @@ export function AppNavbar({ onMenuClick }) {
           />
         </form>
 
-        <Link
-          to="/notifications"
-          aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}
-          className="relative flex size-11 items-center justify-center rounded-xl text-muted hover:bg-brand-50 hover:text-brand-700"
-        >
-          <Bell className="size-5" />
-          {unread > 0 && (
-            <span className="absolute right-2.5 top-2.5 size-2.5 rounded-full bg-accent-500 ring-2 ring-surface" />
-          )}
-        </Link>
+        <NotificationBell />
 
         <div className="relative" ref={menuRef}>
           <button

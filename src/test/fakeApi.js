@@ -11,6 +11,9 @@ export function createFakeApi({ users, events = {} }) {
   let seq = 0
   const overrides = []
   const checklists = {} // token -> eventId -> items
+  const notes = {} // token -> notifications (newest first)
+  const notePrefs = {} // token -> notification preferences
+  const defaultPrefs = { enabled: true, upcoming: true, prep: true, departure: true, checklist: true, leadMinutes: 10, browser: false }
   let weatherResult = { status: 'no_location', eventStartAt: null, location: null, forecast: null, fetchedAt: null, message: 'Add a destination to see the weather.' }
 
   const respond = (status, body) =>
@@ -110,6 +113,30 @@ export function createFakeApi({ users, events = {} }) {
       const startIso = /Z$|[+-]\d\d:\d\d$/.test(body.startAt) ? new Date(body.startAt).toISOString() : `${body.startAt}:00.000Z`
       return ok(planView(asEvent, startIso))
     }
+    // ---- notifications (simplified mirror of the backend; per-token isolation) ----
+    if (path === '/users/me/notification-preferences') {
+      const prefs = (notePrefs[token] ??= { ...defaultPrefs })
+      if (method === 'PATCH') Object.assign(prefs, body)
+      return ok({ preferences: { ...prefs } })
+    }
+    if (path.startsWith('/notifications')) {
+      const list = (notes[token] ??= [])
+      const unread = () => list.filter((n) => !n.read).length
+      if (path === '/notifications' && method === 'GET') {
+        const limit = Number(u.searchParams.get('limit') ?? 20)
+        const page = Number(u.searchParams.get('page') ?? 1)
+        return ok({ notifications: structuredClone(list.slice((page - 1) * limit, page * limit)), unreadCount: unread(), pagination: { page, limit, total: list.length, totalPages: Math.max(1, Math.ceil(list.length / limit)) } })
+      }
+      if (path === '/notifications/read-all' && method === 'POST') {
+        list.forEach((n) => { n.read = true })
+        return ok({ updated: 0, unreadCount: 0 })
+      }
+      const nm = path.match(/^\/notifications\/([^/]+)(\/read)?$/)
+      const note = nm && list.find((n) => n.id === nm[1])
+      if (!note) return respond(404, { success: false, message: 'Notification not found', errors: [] })
+      if (method === 'PATCH') { note.read = true; return ok({ notification: { ...note }, unreadCount: unread() }) }
+      if (method === 'DELETE') { list.splice(list.indexOf(note), 1); return ok({ unreadCount: unread() }) }
+    }
     // ---- checklist + weather (simplified mirror of the backend; per-token isolation like the real API) ----
     if (path === '/checklist-templates') return ok({ templates: [{ key: 'university', label: 'University / Class', items: [{ text: 'Laptop', group: 'Electronics' }, { text: 'Charger', group: 'Electronics' }] }, { key: 'other', label: 'Custom event', items: [] }] })
     const weatherMatch = path.match(/^\/events\/([^/]+)\/weather$/)
@@ -184,6 +211,10 @@ export function createFakeApi({ users, events = {} }) {
     override: (fn) => overrides.push(fn),
     /** Set the weather every event reports (the shape of the backend weather result). */
     setWeather: (w) => { weatherResult = w },
+    /** Seed notifications for a token (newest first). */
+    seedNotifications: (token, items) => { (notes[token] ??= []).push(...items.map((n, i) => ({ id: `note-${++seq}-${i}`, eventId: null, type: 'PREP_NOW', category: 'preparation', body: 'Body', read: false, createdAt: new Date().toISOString(), ...n }))) },
+    setNotificationPrefs: (token, p) => { notePrefs[token] = { ...defaultPrefs, ...p } },
+    notifications: (token) => notes[token] ?? [],
     checklist: (token, eventId) => (checklists[token] ??= {})[eventId] ?? [],
     clearOverrides: () => (overrides.length = 0),
     respond,
