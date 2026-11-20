@@ -1,6 +1,6 @@
 import { prisma } from '../../config/database.js'
 import { logger } from '../../utils/logger.js'
-import { expandOccurrences } from '../recurrence.service.js'
+import { occurrencesOf } from '../occurrence.js'
 import { GRACE_MINUTES, MIN, dueNotifications } from './notificationRules.js'
 
 /**
@@ -44,7 +44,7 @@ export async function runNotificationSweep(now = new Date()) {
           { recurrenceRuleId: { not: null }, recurrenceRule: { OR: [{ endsAt: null }, { endsAt: { gt: now } }] } },
         ],
       },
-      include: { recurrenceRule: true, user: { select: { preference: { select: PREF_SELECT } } } },
+      include: { recurrenceRule: true, exceptions: true, user: { select: { preference: { select: PREF_SELECT } } } },
       orderBy: { id: 'asc' },
       take: PAGE,
       ...(cursor && { cursor: { id: cursor }, skip: 1 }),
@@ -58,9 +58,8 @@ export async function runNotificationSweep(now = new Date()) {
     for (const event of events) {
       const prefs = event.user.preference
       if (!prefs) continue
-      const occurrences = expandOccurrences({ startAt: event.startAt, timezone: event.timezone, rule: event.recurrenceRule }, now, horizon, { max: 10 })
-      for (const start of occurrences) {
-        for (const n of dueNotifications({ event, start, prefs, pendingCount: pendingBy.get(event.id) ?? 0, now })) {
+      for (const { event: occ, at: start } of occurrencesOf(event, now, horizon, { max: 10 })) { // skipped occurrences are absent, edited ones carry their own times
+        for (const n of dueNotifications({ event: occ, start, prefs, pendingCount: pendingBy.get(event.id) ?? 0, now })) {
           rows.push({ userId: event.userId, eventId: event.id, type: n.type, category: n.category, title: n.title.slice(0, 150), body: n.body.slice(0, 400), occurrenceStart: start, dedupeKey: n.dedupeKey })
         }
       }

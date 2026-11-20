@@ -22,7 +22,7 @@ const optionalText = (max, label) =>
 
 const recurrence = z
   .strictObject({
-    frequency: z.enum(['DAILY', 'WEEKLY'], { error: 'Frequency must be DAILY or WEEKLY' }),
+    frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY'], { error: 'Frequency must be DAILY, WEEKLY or MONTHLY' }),
     interval: z.number({ error: 'Interval must be a number' }).int().min(1, 'Interval must be at least 1').max(52, 'Interval must be at most 52').default(1),
     daysOfWeek: z
       .array(z.number().int().min(1, 'Weekdays are 1 (Mon) to 7 (Sun)').max(7, 'Weekdays are 1 (Mon) to 7 (Sun)'))
@@ -30,7 +30,10 @@ const recurrence = z
       .max(7)
       .optional(),
     endsOn: z.string().refine(isDateString, 'Use YYYY-MM-DD').nullish(),
+    // Alternative to endsOn: stop after this many occurrences (never both).
+    count: z.number({ error: 'Count must be a number' }).int().min(1, 'Count must be at least 1').max(365, 'Count must be at most 365').nullish(),
   })
+  .refine((r) => !(r.endsOn && r.count), { path: ['count'], message: 'Choose either an end date or a number of occurrences, not both' })
   .refine((r) => r.frequency === 'WEEKLY' || r.daysOfWeek === undefined, {
     path: ['daysOfWeek'],
     message: 'daysOfWeek is only valid for WEEKLY recurrence',
@@ -45,6 +48,7 @@ const fields = {
   notes: optionalText(2000, 'Notes'),
   travelDurationMinutes: z.number({ error: 'Travel duration must be a number' }).int('Travel duration must be a whole number').min(1, 'Travel duration must be at least 1 minute').max(1440, 'Travel duration must be at most 1440 minutes'),
   preparationMinutes: z.number({ error: 'Preparation time must be a number' }).int('Preparation time must be a whole number').min(0, 'Preparation time cannot be negative').max(1440, 'Preparation time must be at most 1440 minutes'),
+  durationMinutes: z.number({ error: 'Duration must be a number' }).int('Duration must be a whole number').min(1, 'Duration must be at least 1 minute').max(1440, 'Duration must be at most 1440 minutes').nullish(),
   arrivalBufferMinutes: z.number({ error: 'Arrival buffer must be a number' }).int('Arrival buffer must be a whole number').min(0, 'Arrival buffer cannot be negative').max(1440, 'Arrival buffer must be at most 1440 minutes'),
 }
 
@@ -66,10 +70,13 @@ export const updateEventSchema = z
     travelDurationMinutes: fields.travelDurationMinutes,
     preparationMinutes: fields.preparationMinutes,
     arrivalBufferMinutes: fields.arrivalBufferMinutes,
+    durationMinutes: fields.durationMinutes,
     recurrence: recurrence.nullable(), // object = set/replace, null = remove, absent = unchanged
   })
   .partial()
   .refine((d) => Object.keys(d).length > 0, { message: 'Provide at least one field to update' })
+
+export { recurrence as recurrenceSchema, fields as eventFields }
 
 export const idParamSchema = z.object({ id: z.uuid('Invalid event id') })
 

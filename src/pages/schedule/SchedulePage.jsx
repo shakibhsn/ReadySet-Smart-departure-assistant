@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { SegmentedControl } from '@/components/common/SegmentedControl'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ConflictsCard } from '@/components/events/ConflictsCard'
 import { MonthCalendar } from '@/components/events/MonthCalendar'
 import { ScheduleList } from '@/components/events/ScheduleList'
 import { WeekView } from '@/components/events/WeekView'
@@ -175,6 +176,8 @@ export default function SchedulePage() {
 
       {notice && <Alert variant="success">{notice}</Alert>}
       {deleteError && <Alert>{deleteError}</Alert>}
+
+      <ConflictsCard />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[14rem_1fr] lg:items-end">
         <FormSelect

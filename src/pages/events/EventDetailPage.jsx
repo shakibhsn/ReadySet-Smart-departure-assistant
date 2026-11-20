@@ -8,6 +8,8 @@ import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { OccurrencePanel } from '@/components/events/OccurrencePanel'
+import { SaveTemplateButton } from '@/components/events/SaveTemplateButton'
 import { ChecklistPanel } from '@/components/checklist/ChecklistPanel'
 import { WeatherCard } from '@/components/weather/WeatherCard'
 import { DepartureTimeline } from '@/components/planner/DepartureTimeline'
@@ -19,6 +21,7 @@ import { useEventMutations } from '@/hooks/useEvents'
 import { getEventById } from '@/services/eventApi'
 import { formatDuration, formatLongDate, formatTime12 } from '@/utils/format'
 
+const MONTHLY_NOTE = 'on the same day of each month'
 const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 function describeRecurrence(r) {
@@ -27,7 +30,10 @@ function describeRecurrence(r) {
   const base =
     r.frequency === 'DAILY'
       ? `Every ${every}${r.interval === 1 ? 'day' : 'days'}`
-      : `Every ${every}${r.interval === 1 ? 'week' : 'weeks'} on ${r.daysOfWeek.map((d) => DAY_NAMES[d]).join(', ')}`
+      : r.frequency === 'MONTHLY'
+        ? `Every ${every}${r.interval === 1 ? 'month' : 'months'} ${MONTHLY_NOTE}`
+        : `Every ${every}${r.interval === 1 ? 'week' : 'weeks'} on ${r.daysOfWeek.map((d) => DAY_NAMES[d]).join(', ')}`
+  if (r.count) return `${base}, ${r.count} ${r.count === 1 ? 'time' : 'times'} in total`
   return r.endsOn ? `${base}, until ${formatLongDate(r.endsOn)}` : base
 }
 
@@ -89,6 +95,7 @@ export default function EventDetailPage() {
             <ButtonLink to={`/planner?event=${event.id}`} variant="soft">
               <Compass className="size-4" /> View Departure Plan
             </ButtonLink>
+            <SaveTemplateButton event={event} />
             <ButtonLink to={`/events/${event.id}/edit`} variant="outline">
               <Pencil className="size-4" /> Edit
             </ButtonLink>
@@ -115,6 +122,7 @@ export default function EventDetailPage() {
             <div><dt className="text-xs font-semibold uppercase text-muted">Travel</dt><dd className="font-bold">{formatDuration(event.travelDurationMinutes)}</dd></div>
             <div><dt className="text-xs font-semibold uppercase text-muted">Preparation</dt><dd className="font-bold">{formatDuration(event.preparationMinutes)}</dd></div>
             <div><dt className="text-xs font-semibold uppercase text-muted">Arrival buffer</dt><dd className="font-bold">{formatDuration(event.arrivalBufferMinutes)}</dd></div>
+            {event.durationMinutes && <div><dt className="text-xs font-semibold uppercase text-muted">Duration</dt><dd className="font-bold">{formatDuration(event.durationMinutes)}</dd></div>}
           </dl>
           {event.notes && (
             <div>
@@ -124,6 +132,8 @@ export default function EventDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {event.isRecurring && <OccurrencePanel event={event} plan={planQuery.data} onChanged={planQuery.reload} />}
 
       <Card>
         <CardHeader>

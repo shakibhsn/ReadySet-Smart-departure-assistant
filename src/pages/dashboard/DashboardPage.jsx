@@ -9,6 +9,7 @@ import { NextDepartureCard } from '@/components/dashboard/NextDepartureCard'
 import { ReadinessCard } from '@/components/dashboard/ReadinessCard'
 import { ChecklistPreview } from '@/components/dashboard/ChecklistPreview'
 import { WeatherCard } from '@/components/weather/WeatherCard'
+import { ConflictsCard } from '@/components/events/ConflictsCard'
 import { QuickActionCard } from '@/components/dashboard/QuickActionCard'
 import { ScheduleList } from '@/components/events/ScheduleList'
 import { useChecklist } from '@/hooks/useChecklist'
@@ -88,6 +89,8 @@ export default function DashboardPage() {
             <QuickActionCard to="/planner" icon={Compass} title="Plan departure" description="Work out when to leave" />
             <QuickActionCard to="/schedule" icon={CalendarDays} title="View schedule" description="See everything coming up" />
           </div>
+
+          <ConflictsCard compact />
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <div className="anim-fade-up space-y-6" style={{ '--d': '140ms' }}>

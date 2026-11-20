@@ -3,12 +3,13 @@ import { prisma } from '../config/database.js'
 import { AppError } from '../utils/apiResponse.js'
 import { DEFAULT_TIMEZONE, isDateString, localParts, parseStart, startOfLocalDay, toZone } from '../utils/timezone.js'
 import { invalidateEventReminders } from './notification/notification.service.js'
-import { expandOccurrences } from './recurrence.service.js'
+import { occurrencesOf } from './occurrence.js'
+import { nthOccurrence } from './recurrence.service.js'
 
 // SECURITY (IDOR): every query below filters by `userId`, which always comes from the verified JWT
 // (req.userId). An event id alone is never enough to read, change or delete a row.
 
-const withRule = { recurrenceRule: true }
+const withRule = { recurrenceRule: true, exceptions: true } // exceptions are applied by services/occurrence.js
 const MAX_RANGE_DAYS = 93
 const UPCOMING_HORIZON_DAYS = 90
 const notFound = () => new AppError(404, 'Event not found')
@@ -22,12 +23,14 @@ const toPublicRecurrence = (rule, timezone) =>
         frequency: rule.frequency,
         interval: rule.interval,
         daysOfWeek: rule.daysOfWeek,
-        endsOn: rule.endsAt ? toZone(rule.endsAt, timezone).toFormat('yyyy-MM-dd') : null,
+        // A count-limited series reports `count` (its endsAt is derived from it); otherwise the end date, if any.
+        endsOn: rule.occurrenceCount ? null : rule.endsAt ? toZone(rule.endsAt, timezone).toFormat('yyyy-MM-dd') : null,
+        count: rule.occurrenceCount ?? null,
       }
     : null
 
 /** Public shape. userId and the rule's internal id are never exposed. */
-export function toPublicEvent(event, occurrenceStart = null) {
+export function toPublicEvent(event, occurrenceStart = null, meta = {}) {
   const start = occurrenceStart ?? event.startAt
   return {
     id: event.id,
@@ -41,16 +44,20 @@ export function toPublicEvent(event, occurrenceStart = null) {
     travelDurationMinutes: event.travelDurationMinutes,
     preparationMinutes: event.preparationMinutes,
     arrivalBufferMinutes: event.arrivalBufferMinutes,
+    durationMinutes: event.durationMinutes ?? null,
     isRecurring: event.isRecurring,
     recurrence: toPublicRecurrence(event.recurrenceRule, event.timezone),
     seriesStartAt: event.startAt.toISOString(),
     isOccurrence: occurrenceStart !== null,
+    originalStart: (meta.originalStart ?? occurrenceStart ?? event.startAt).toISOString(), // identity of this occurrence in the series
+    isModified: Boolean(meta.modified),
     createdAt: event.createdAt.toISOString(),
     updatedAt: event.updatedAt.toISOString(),
   }
 }
 
 const seriesOf = (event) => ({ startAt: event.startAt, timezone: event.timezone, rule: event.recurrenceRule })
+const MAX_COUNT = 365
 
 // ---------- helpers ----------
 
@@ -75,14 +82,23 @@ function buildRuleData(rec, start, timezone) {
       throw fieldError('recurrence.daysOfWeek', 'The event start date must fall on one of the selected weekdays')
     }
   }
+  if (rec.endsOn && rec.count) throw fieldError('recurrence.count', 'Choose either an end date or a number of occurrences, not both')
   let endsAt = null
+  let occurrenceCount = null
   if (rec.endsOn) {
     const endDay = startOfLocalDay(rec.endsOn, timezone)
     if (!endDay) throw fieldError('recurrence.endsOn', 'Not a valid date')
     if (rec.endsOn < start.toFormat('yyyy-MM-dd')) throw fieldError('recurrence.endsOn', 'End date cannot be before the event start date')
     endsAt = endDay.endOf('day').toJSDate()
+  } else if (rec.count) {
+    if (rec.count > MAX_COUNT) throw fieldError('recurrence.count', `At most ${MAX_COUNT} occurrences`)
+    const last = nthOccurrence({ startAt: start.toJSDate(), timezone, rule: { frequency: rec.frequency, interval, daysOfWeek } }, rec.count)
+    if (!last) throw fieldError('recurrence.count', 'This rule cannot produce that many occurrences within ten years')
+    // The series ends at the end of the local day of its Nth occurrence; readers only ever look at endsAt.
+    endsAt = toZone(last, timezone).endOf('day').toJSDate()
+    occurrenceCount = rec.count
   }
-  return { frequency: rec.frequency, interval, daysOfWeek, endsAt }
+  return { frequency: rec.frequency, interval, daysOfWeek, endsAt, occurrenceCount }
 }
 
 function parseBound(value, timezone, edge, field) {
@@ -126,6 +142,7 @@ export async function createEvent(userId, input) {
         travelDurationMinutes: input.travelDurationMinutes,
         preparationMinutes: input.preparationMinutes,
         arrivalBufferMinutes: input.arrivalBufferMinutes,
+        durationMinutes: input.durationMinutes ?? null,
         isRecurring: Boolean(created),
         recurrenceRuleId: created?.id ?? null,
       },
@@ -190,11 +207,11 @@ export async function updateEvent(userId, id, input) {
     // Rule untouched but the start moved: re-validate it against the new start (same local end day).
     const old = existing.recurrenceRule
     const endsOn = old.endsAt ? toZone(old.endsAt, existing.timezone).toFormat('yyyy-MM-dd') : null
-    ruleChange = buildRuleData({ frequency: old.frequency, interval: old.interval, daysOfWeek: old.daysOfWeek.length ? old.daysOfWeek : undefined, endsOn }, start, timezone)
+    ruleChange = buildRuleData({ frequency: old.frequency, interval: old.interval, daysOfWeek: old.daysOfWeek.length ? old.daysOfWeek : undefined, ...(old.occurrenceCount ? { count: old.occurrenceCount } : { endsOn }) }, start, timezone)
   }
 
   const data = {}
-  for (const key of ['title', 'category', 'destination', 'notes', 'travelDurationMinutes', 'preparationMinutes', 'arrivalBufferMinutes']) {
+  for (const key of ['title', 'category', 'destination', 'notes', 'travelDurationMinutes', 'preparationMinutes', 'arrivalBufferMinutes', 'durationMinutes']) {
     if (input[key] !== undefined) data[key] = input[key]
   }
   if (timeChanged) {
@@ -264,10 +281,10 @@ export async function getUpcoming(userId, { limit }) {
 
   const items = single.map((e) => ({ event: e, at: e.startAt }))
   for (const e of recurring) {
-    for (const at of expandOccurrences(seriesOf(e), now, horizon, { max: limit })) items.push({ event: e, at })
+    for (const o of occurrencesOf(e, now, horizon, { max: limit })) items.push({ event: o.event, at: o.at, originalStart: o.originalStart, modified: o.modified })
   }
   items.sort((a, b) => a.at - b.at || a.event.id.localeCompare(b.event.id))
-  return { events: items.slice(0, limit).map(({ event, at }) => toPublicEvent(event, event.isRecurring ? at : null)) }
+  return { events: items.slice(0, limit).map(({ event, at, originalStart, modified }) => toPublicEvent(event, event.isRecurring ? at : null, { originalStart, modified })) }
 }
 
 /**
@@ -293,10 +310,8 @@ export async function listOccurrenceRecords(userId, from, to, { category } = {})
     }),
   ])
 
-  const items = single.map((event) => ({ event, at: event.startAt }))
-  for (const event of recurring) {
-    for (const at of expandOccurrences(seriesOf(event), from, to)) items.push({ event, at })
-  }
+  const items = single.map((event) => ({ event, at: event.startAt, originalStart: event.startAt, modified: false }))
+  for (const event of recurring) items.push(...occurrencesOf(event, from, to))
   items.sort((a, b) => a.at - b.at || a.event.id.localeCompare(b.event.id))
   return items
 }
@@ -306,7 +321,7 @@ export async function getOccurrences(userId, query) {
   const { gte, lte } = await resolveRange(query, userId)
   if ((lte - gte) / 86_400_000 > MAX_RANGE_DAYS) throw fieldError('to', `Range cannot exceed ${MAX_RANGE_DAYS} days`)
   const items = await listOccurrenceRecords(userId, gte, lte, { category: query.category })
-  return { events: items.map(({ event, at }) => toPublicEvent(event, event.isRecurring ? at : null)) }
+  return { events: items.map(({ event, at, originalStart, modified }) => toPublicEvent(event, event.isRecurring ? at : null, { originalStart, modified })) }
 }
 
 /** Single owned event row (with its recurrence rule) or a 404. Used by the departure-plan service. */

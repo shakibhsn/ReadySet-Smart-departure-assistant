@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EVENT_CATEGORIES } from '@/data/categories'
 import { ApiError, fieldErrorsFrom } from '@/lib/apiClient'
 import { usePreviewPlan } from '@/hooks/usePreviewPlan'
-import { FREQUENCIES, SERVER_FIELD, WEEKDAYS, formToPayload, timezoneOptions, validateEventForm } from './eventFormUtils'
+import { END_MODES, FREQUENCIES, FREQUENCY_UNITS, SERVER_FIELD, WEEKDAYS, formToPayload, timezoneOptions, validateEventForm } from './eventFormUtils'
 import { cn } from '@/lib/utils'
 
 /**
@@ -99,6 +99,7 @@ export function EventForm({ initial, submitLabel, onSubmit, onCancel }) {
           <FormInput label="Travel duration" type="number" inputMode="numeric" min="1" required suffix="min" placeholder="35" value={form.travelMinutes} error={errors.travelMinutes} onChange={set('travelMinutes')} />
           <FormInput label="Preparation time" type="number" inputMode="numeric" min="0" required suffix="min" value={form.prepMinutes} error={errors.prepMinutes} hint="Time you need to get ready." onChange={set('prepMinutes')} />
           <FormInput label="Arrival buffer" type="number" inputMode="numeric" min="0" required suffix="min" value={form.bufferMinutes} error={errors.bufferMinutes} hint="How early you want to arrive." onChange={set('bufferMinutes')} />
+          <FormInput label="Duration (optional)" type="number" inputMode="numeric" min="1" suffix="min" placeholder="60" value={form.durationMinutes} error={errors.durationMinutes} hint="Used to spot schedule conflicts. Blank is treated as 60 minutes." onChange={set('durationMinutes')} />
           <FormTextarea className="sm:col-span-2" label="Additional notes" placeholder="Anything to remember?" value={form.notes} error={errors.notes} onChange={set('notes')} />
 
           <fieldset className="space-y-4 rounded-xl border border-line p-4 sm:col-span-2">
@@ -115,8 +116,11 @@ export function EventForm({ initial, submitLabel, onSubmit, onCancel }) {
             {form.recurring && (
               <div className="grid gap-4 sm:grid-cols-3">
                 <FormSelect label="Repeats" options={FREQUENCIES} value={form.frequency} error={errors.frequency} onChange={set('frequency')} />
-                <FormInput label="Every" type="number" inputMode="numeric" min="1" suffix={form.frequency === 'WEEKLY' ? 'week(s)' : 'day(s)'} value={form.interval} error={errors.interval} onChange={set('interval')} />
-                <FormInput label="Ends on (optional)" type="date" value={form.endsOn} error={errors.endsOn} onChange={set('endsOn')} />
+                <FormInput label="Every" type="number" inputMode="numeric" min="1" suffix={FREQUENCY_UNITS[form.frequency]} value={form.interval} error={errors.interval} onChange={set('interval')} />
+                <FormSelect label="Ends" options={END_MODES} value={form.endMode} onChange={set('endMode')} />
+                {form.endMode === 'date' && <FormInput className="sm:col-span-3" label="Ends on" type="date" value={form.endsOn} error={errors.endsOn} onChange={set('endsOn')} />}
+                {form.endMode === 'count' && <FormInput className="sm:col-span-3" label="Number of occurrences" type="number" inputMode="numeric" min="1" max="365" suffix="times" value={form.count} error={errors.count} hint="The event stops repeating after this many times." onChange={set('count')} />}
+                {form.frequency === 'MONTHLY' && <p className="text-xs text-muted sm:col-span-3">Repeats on the same day of the month. For the 29th–31st, shorter months use their last day.</p>}
                 {form.frequency === 'WEEKLY' && (
                   <div className="sm:col-span-3">
                     <p id="weekday-label" className="mb-2 text-sm font-semibold">On these days</p>

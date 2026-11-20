@@ -32,6 +32,8 @@ model User {
   emailLogs                 EmailLog[]
   checklistItems            ChecklistItem[]
   notifications             Notification[]
+  eventExceptions           EventException[]
+  eventTemplates            EventTemplate[]
 
   @@map("users")
 }
@@ -74,6 +76,7 @@ model RecurrenceRule {
   frequency  String    @db.VarChar(10) // DAILY | WEEKLY
   interval   Int       @default(1)
   daysOfWeek Int[]     @map("days_of_week") // ISO weekdays 1=Mon..7=Sun (WEEKLY only)
+  occurrenceCount Int?  @map("occurrence_count") // set when the series ends after N occurrences (endsAt is then derived from it)
   endsAt     DateTime? @map("ends_at") // last instant (end of the chosen local day) a series may produce occurrences
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
@@ -97,6 +100,8 @@ model Event {
   travelDurationMinutes Int      @map("travel_duration_minutes")
   preparationMinutes    Int      @map("preparation_minutes")
   arrivalBufferMinutes  Int      @map("arrival_buffer_minutes")
+  // NULL = unknown. The conflict detector then ASSUMES 60 minutes and says so.
+  durationMinutes       Int?     @map("duration_minutes")
   isRecurring           Boolean  @default(false) @map("is_recurring")
   recurrenceRuleId      String?  @unique @map("recurrence_rule_id") @db.Uuid
   createdAt             DateTime @default(now()) @map("created_at")
@@ -106,6 +111,7 @@ model Event {
   recurrenceRule RecurrenceRule? @relation(fields: [recurrenceRuleId], references: [id], onDelete: SetNull)
   checklistItems ChecklistItem[]
   notifications  Notification[]
+  exceptions     EventException[]
 
   @@index([userId, startAt])
   @@index([userId, category])
@@ -196,4 +202,55 @@ model Notification {
   @@index([userId, readAt])
   @@index([eventId])
   @@map("notifications")
+}
+
+// One row per modified or skipped OCCURRENCE of a recurring event (the series itself is never copied).
+// (eventId, originalStart) is UNIQUE, so skipping/editing the same occurrence twice updates one row.
+model EventException {
+  id                    String   @id @default(uuid()) @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  eventId               String   @map("event_id") @db.Uuid
+  originalStart         DateTime @map("original_start") // the generated occurrence this refers to
+  kind                  String   @db.VarChar(10) // SKIPPED | OVERRIDDEN
+  title                 String?  @db.VarChar(150)
+  destination           String?  @db.VarChar(255)
+  notes                 String?  @db.VarChar(2000)
+  startAt               DateTime? @map("start_at")
+  travelDurationMinutes Int?     @map("travel_duration_minutes")
+  preparationMinutes    Int?     @map("preparation_minutes")
+  arrivalBufferMinutes  Int?     @map("arrival_buffer_minutes")
+  durationMinutes       Int?     @map("duration_minutes")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, originalStart])
+  @@index([userId, eventId])
+  @@map("event_exceptions")
+}
+
+// A reusable starting point for new events (no date: the date is chosen when the template is used).
+model EventTemplate {
+  id                    String   @id @default(uuid()) @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  name                  String   @db.VarChar(80)
+  title                 String   @db.VarChar(150)
+  category              String   @db.VarChar(20)
+  destination           String?  @db.VarChar(255)
+  notes                 String?  @db.VarChar(2000)
+  timezone              String?  @db.VarChar(64)
+  travelDurationMinutes Int      @map("travel_duration_minutes")
+  preparationMinutes    Int      @map("preparation_minutes")
+  arrivalBufferMinutes  Int      @map("arrival_buffer_minutes")
+  durationMinutes       Int?     @map("duration_minutes")
+  recurrence            Json?
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@map("event_templates")
 }

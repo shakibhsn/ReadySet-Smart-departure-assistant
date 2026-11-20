@@ -4,7 +4,7 @@ import { logger } from '../utils/logger.js'
 import { eventReminderTemplate } from '../templates/eventReminderTemplate.js'
 import { queueEmail } from './email/emailService.js'
 import { calculateDeparturePlan, resolveTimezone } from './departure/departureCalculator.js'
-import { expandOccurrences } from './recurrence.service.js'
+import { occurrencesOf } from './occurrence.js'
 
 /**
  * EMAIL REMINDERS (upcoming event / start preparing / time to leave)
@@ -93,15 +93,14 @@ export async function runReminderSweep(now = new Date()) {
           { recurrenceRuleId: { not: null }, recurrenceRule: { OR: [{ endsAt: null }, { endsAt: { gt: now } }] } },
         ],
       },
-      include: { recurrenceRule: true },
+      include: { recurrenceRule: true, exceptions: true },
       take: 200,
     })
 
     for (const event of events) {
-      const occurrences = expandOccurrences({ startAt: event.startAt, timezone: event.timezone, rule: event.recurrenceRule }, now, horizon, { max: 10 })
-      for (const start of occurrences) {
-        for (const kind of dueReminders(event, start, user.preference, now)) {
-          const plan = departurePlan(event, start)
+      for (const { event: occ, at: start } of occurrencesOf(event, now, horizon, { max: 10 })) { // skipped occurrences are absent, edited ones carry their own times
+        for (const kind of dueReminders(occ, start, user.preference, now)) {
+          const plan = departurePlan(occ, start)
           queueEmail({
             type: `EVENT_REMINDER_${kind.toUpperCase()}`,
             to: user.email,
@@ -110,7 +109,7 @@ export async function runReminderSweep(now = new Date()) {
             template: eventReminderTemplate({
               name: user.name,
               kind,
-              event,
+              event: occ,
               times: {
                 start: clock(start, event.timezone),
                 targetArrival: clock(plan.targetArrival, event.timezone),

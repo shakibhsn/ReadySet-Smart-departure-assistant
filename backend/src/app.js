@@ -5,6 +5,7 @@ import { env } from './config/env.js'
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js'
 import { createAuthRouter } from './routes/auth.routes.js'
 import checklistRoutes, { templatesRouter } from './routes/checklist.routes.js'
+import { occurrenceRouter, scheduleRouter, templateRouter } from './routes/schedule.routes.js'
 import notificationRoutes from './routes/notification.routes.js'
 import departureRoutes from './routes/departure.routes.js'
 import eventRoutes from './routes/event.routes.js'
@@ -27,6 +28,9 @@ export function createApp(options = {}) {
   // Per-event sub-resources first; they only match /:id/checklist... and /:id/weather.
   app.use('/api/events', checklistRoutes)
   app.use('/api/events', weatherRoutes)
+  app.use('/api/events', occurrenceRouter)
+  app.use('/api/event-templates', templateRouter)
+  app.use('/api/schedule', scheduleRouter)
   app.use('/api/events', eventRoutes)
   app.use('/api/checklist-templates', templatesRouter)
   app.use('/api/departure', departureRoutes)

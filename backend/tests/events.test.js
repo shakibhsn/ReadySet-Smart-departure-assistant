@@ -88,7 +88,7 @@ describe('POST /api/events', () => {
   })
 
   it.each([
-    ['unsupported frequency', { frequency: 'MONTHLY' }],
+    ['unsupported frequency (YEARLY is not supported)', { frequency: 'YEARLY' }],
     ['zero interval', { frequency: 'DAILY', interval: 0 }],
     ['fractional interval', { frequency: 'DAILY', interval: 1.5 }],
     ['interval too large', { frequency: 'DAILY', interval: 53 }],
@@ -369,7 +369,7 @@ describe('PATCH /api/events/:id', () => {
     ['bad date', { startAt: '2030-02-31T10:00' }],
     ['bad timezone', { timezone: 'Nowhere/City' }],
     ['negative travel', { travelDurationMinutes: -1 }],
-    ['bad recurrence', { recurrence: { frequency: 'MONTHLY' } }],
+    ['bad recurrence', { recurrence: { frequency: 'YEARLY' } }],
     ['end before start', { recurrence: { frequency: 'DAILY', endsOn: '2020-01-01' } }],
     ['userId (owner change)', { userId: '00000000-0000-4000-8000-000000000000' }],
     ['id', { id: '00000000-0000-4000-8000-000000000000' }],

@@ -11,6 +11,8 @@ export function createFakeApi({ users, events = {} }) {
   let seq = 0
   const overrides = []
   const checklists = {} // token -> eventId -> items
+  let conflictsResult = { from: null, to: null, eventsChecked: 0, summary: { high: 0, medium: 0 }, conflicts: [], assumptions: ['Events without a duration are assumed to last 60 minutes.'] }
+  const templates = {} // token -> event templates
   const notes = {} // token -> notifications (newest first)
   const notePrefs = {} // token -> notification preferences
   const defaultPrefs = { enabled: true, upcoming: true, prep: true, departure: true, checklist: true, leadMinutes: 10, browser: false }
@@ -113,6 +115,27 @@ export function createFakeApi({ users, events = {} }) {
       const startIso = /Z$|[+-]\d\d:\d\d$/.test(body.startAt) ? new Date(body.startAt).toISOString() : `${body.startAt}:00.000Z`
       return ok(planView(asEvent, startIso))
     }
+    // ---- schedule conflicts + event templates (simplified mirror of the backend) ----
+    if (path === '/schedule/conflicts') return ok(conflictsResult)
+    if (path === '/event-templates') {
+      const list = (templates[token] ??= [])
+      if (method === 'POST') {
+        const t = { id: `tpl-${++seq}`, name: body.name, title: body.title ?? 'From event', category: body.category ?? 'other', destination: null, notes: null, timezone: null, travelDurationMinutes: 20, preparationMinutes: 15, arrivalBufferMinutes: 5, durationMinutes: null, recurrence: null, ...body }
+        list.push(t)
+        return respond(201, { success: true, message: 'Template saved', data: { template: t } })
+      }
+      return ok({ templates: structuredClone(list) })
+    }
+    const tplMatch = path.match(/^\/event-templates\/([^/]+)$/)
+    if (tplMatch && method === 'DELETE') {
+      const list = (templates[token] ??= [])
+      const i = list.findIndex((t) => t.id === tplMatch[1])
+      if (i < 0) return respond(404, { success: false, message: 'Template not found', errors: [] })
+      list.splice(i, 1)
+      return ok({}, 'Template deleted')
+    }
+    const occMatch = path.match(/^\/events\/([^/]+)\/occurrences(\/skip|\/restore)?$/)
+    if (occMatch) return ok({ skipped: true, restored: true, occurrence: null })
     // ---- notifications (simplified mirror of the backend; per-token isolation) ----
     if (path === '/users/me/notification-preferences') {
       const prefs = (notePrefs[token] ??= { ...defaultPrefs })
@@ -213,6 +236,8 @@ export function createFakeApi({ users, events = {} }) {
     setWeather: (w) => { weatherResult = w },
     /** Seed notifications for a token (newest first). */
     seedNotifications: (token, items) => { (notes[token] ??= []).push(...items.map((n, i) => ({ id: `note-${++seq}-${i}`, eventId: null, type: 'PREP_NOW', category: 'preparation', body: 'Body', read: false, createdAt: new Date().toISOString(), ...n }))) },
+    setConflicts: (c) => { conflictsResult = { ...conflictsResult, ...c } },
+    seedTemplates: (token, list) => { (templates[token] ??= []).push(...list.map((t, i) => ({ id: `tpl-seed-${i}`, destination: null, notes: null, timezone: null, durationMinutes: null, recurrence: null, ...t }))) },
     setNotificationPrefs: (token, p) => { notePrefs[token] = { ...defaultPrefs, ...p } },
     notifications: (token) => notes[token] ?? [],
     checklist: (token, eventId) => (checklists[token] ??= {})[eventId] ?? [],

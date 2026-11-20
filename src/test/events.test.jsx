@@ -99,6 +99,7 @@ describe('Create Event form -> API', () => {
     const todayIso = getISODay(new Date())
     await u.click(screen.getByRole('button', { name: dayLabels[todayIso] }))
     const endsOn = format(addDays(new Date(), 60), 'yyyy-MM-dd')
+    await u.selectOptions(screen.getByLabelText('Ends'), 'date')
     await u.type(screen.getByLabelText(/Ends on/), endsOn)
     await u.click(screen.getByRole('button', { name: 'Save event' }))
 

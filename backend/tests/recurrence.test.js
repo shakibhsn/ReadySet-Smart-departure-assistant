@@ -77,8 +77,8 @@ describe('expandOccurrences (pure recurrence calculation)', () => {
     const zone = 'UTC'
     const daily = { startAt: at('2020-01-01T09:00', zone), timezone: zone, rule: { frequency: 'DAILY', interval: 1, daysOfWeek: [], endsAt: null } }
     expect(expandOccurrences(daily, at('2020-01-01T00:00', zone), at('2030-01-01T00:00', zone)).length).toBe(MAX_OCCURRENCES)
-    const monthly = { ...daily, rule: { frequency: 'MONTHLY', interval: 1, daysOfWeek: [], endsAt: null } }
-    expect(expandOccurrences(monthly, at('2020-01-01T00:00', zone), at('2020-02-01T00:00', zone))).toEqual([])
+    const yearly = { ...daily, rule: { frequency: 'YEARLY', interval: 1, daysOfWeek: [], endsAt: null } }
+    expect(expandOccurrences(yearly, at('2020-01-01T00:00', zone), at('2020-02-01T00:00', zone))).toEqual([])
     const weeklyNoDays = { ...daily, rule: { frequency: 'WEEKLY', interval: 1, daysOfWeek: [], endsAt: null } }
     expect(expandOccurrences(weeklyNoDays, at('2020-01-01T00:00', zone), at('2020-02-01T00:00', zone))).toEqual([])
   })

@@ -2,8 +2,8 @@ import { DateTime } from 'luxon'
 import { prisma } from '../../config/database.js'
 import { AppError } from '../../utils/apiResponse.js'
 import { DEFAULT_TIMEZONE, parseStart } from '../../utils/timezone.js'
-import { findOwnedEvent, listOccurrenceRecords, seriesOf } from '../event.service.js'
-import { expandOccurrences } from '../recurrence.service.js'
+import { findOwnedEvent, listOccurrenceRecords } from '../event.service.js'
+import { findOccurrence, nextOccurrence } from '../occurrence.js'
 import { DepartureInputError, calculateDeparturePlan, localizePlan, resolveDurations, resolveTimezone } from './departureCalculator.js'
 import { describeMinutes, getDepartureStatus } from './departureStatus.js'
 
@@ -49,7 +49,7 @@ function buildExplanation(plan, local) {
 }
 
 /** Consistent API shape for one plan. `event` is null-ish for previews. */
-export function buildPlanView({ event, plan, now }) {
+export function buildPlanView({ event, plan, now, occurrence = null }) {
   const local = localizePlan(plan)
   const readiness = getDepartureStatus(plan, now)
   return {
@@ -61,6 +61,9 @@ export function buildPlanView({ event, plan, now }) {
       startAt: plan.eventStart.toISOString(), // this occurrence's start
       timezone: plan.timezone,
       isRecurring: Boolean(event?.isRecurring),
+      // Identity of this occurrence in its series (differs from startAt when the occurrence was moved).
+      originalStart: (occurrence?.originalStart ?? plan.eventStart).toISOString(),
+      isModified: Boolean(occurrence?.modified),
     },
     plan: {
       preparationStart: plan.preparationStart.toISOString(),
@@ -110,25 +113,28 @@ export async function getEventDeparturePlan(userId, eventId, { occurrence } = {}
   const event = await findOwnedEvent(userId, eventId) // 404 for missing OR someone else's event
 
   let start = event.startAt
+  let planEvent = event
+  let chosen = null
   if (event.isRecurring) {
-    const series = seriesOf(event)
     if (occurrence) {
-      const wanted = new Date(occurrence)
-      const [exact] = expandOccurrences(series, wanted, wanted, { max: 1 })
-      if (!exact || exact.getTime() !== wanted.getTime()) {
-        throw new AppError(400, 'Validation failed', [{ field: 'occurrence', message: 'Not an occurrence of this event' }])
-      }
-      start = exact
+      // Matches the generated start or a moved start; a skipped occurrence is not an occurrence any more.
+      const found = findOccurrence(event, new Date(occurrence))
+      if (!found) throw new AppError(400, 'Validation failed', [{ field: 'occurrence', message: 'Not an occurrence of this event' }])
+      ;({ at: start, event: planEvent } = found)
+      chosen = found
     } else {
-      // Default: the next occurrence from now; if the series has ended, its first occurrence.
-      const horizon = new Date(now.getTime() + NEXT_OCCURRENCE_HORIZON_DAYS * 86_400_000)
-      start = expandOccurrences(series, now, horizon, { max: 1 })[0] ?? event.startAt
+      // Default: the next (non-skipped) occurrence from now; if the series has ended, its first occurrence.
+      const next = nextOccurrence(event, now, NEXT_OCCURRENCE_HORIZON_DAYS)
+      if (next) {
+        ;({ at: start, event: planEvent } = next)
+        chosen = next
+      }
     }
   } else if (occurrence && new Date(occurrence).getTime() !== event.startAt.getTime()) {
     throw new AppError(400, 'Validation failed', [{ field: 'occurrence', message: 'Not an occurrence of this event' }])
   }
 
-  return buildPlanView({ event, plan: planForEvent(event, start), now })
+  return buildPlanView({ event: planEvent, plan: planForEvent(planEvent, start), now, occurrence: chosen })
 }
 
 // ---------- preview (never touches the database writes) ----------
