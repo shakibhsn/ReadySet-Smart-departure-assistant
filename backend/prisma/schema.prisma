@@ -37,6 +37,7 @@ model User {
   packingTemplates          PackingTemplate[]
   forgottenReports          ForgottenItemReport[]
   savedPlaces               SavedPlace[]
+  preparationLogs           PreparationLog[]
 
   @@map("users")
 }
@@ -64,6 +65,9 @@ model UserPreference {
   browserNotificationsEnabled Boolean  @default(false) @map("browser_notifications_enabled")
   // The user's default starting location (one per user by construction). Cleared automatically if that place is deleted.
   defaultStartPlaceId         String?  @map("default_start_place_id") @db.Uuid
+  // Adaptive preparation profile: the user can switch it off, and keep their own per-category values ({category: {prepMinutes, bufferMinutes}}).
+  adaptiveProfileEnabled      Boolean  @default(true) @map("adaptive_profile_enabled")
+  preparationOverrides        Json?    @map("preparation_overrides")
   createdAt                   DateTime @default(now()) @map("created_at")
   updatedAt                   DateTime @updatedAt @map("updated_at")
 
@@ -119,6 +123,7 @@ model Event {
   notifications  Notification[]
   exceptions     EventException[]
   forgottenReports ForgottenItemReport[]
+  preparationLogs  PreparationLog[]
 
   @@index([userId, startAt])
   @@index([userId, category])
@@ -312,4 +317,32 @@ model SavedPlace {
   @@unique([userId, label])
   @@index([userId])
   @@map("saved_places")
+}
+
+// One row per occurrence the user chose to log ("Start preparing" / "I'm ready" / "I left"). ALL timestamps are written by
+// the server. Nothing here is inferred from checklist activity. Rows are kept (event_id -> NULL) if the event is deleted.
+// NOTE: PostgreSQL treats NULLs as distinct in a unique index, so after an event is deleted its logs (event_id NULL) no longer
+// collide with each other. That is safe because logs can only be created for an EXISTING event (the API 404s otherwise).
+model PreparationLog {
+  id                  String    @id @default(uuid()) @db.Uuid
+  userId              String    @map("user_id") @db.Uuid
+  eventId             String?   @map("event_id") @db.Uuid
+  occurrenceStart     DateTime  @map("occurrence_start")
+  category            String    @db.VarChar(20)
+  plannedPrepMinutes  Int       @map("planned_prep_minutes")
+  plannedDepartureAt  DateTime  @map("planned_departure_at")
+  prepStartedAt       DateTime? @map("prep_started_at")
+  readyAt             DateTime? @map("ready_at")
+  cancelledAt         DateTime? @map("cancelled_at")
+  leftAt              DateTime? @map("left_at")
+  uncheckedItems      Json?     @map("unchecked_items") // names of the user's own checklist items still unchecked when they pressed "I left" (max 20)
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, eventId, occurrenceStart])
+  @@index([userId, occurrenceStart(sort: Desc)])
+  @@map("preparation_logs")
 }

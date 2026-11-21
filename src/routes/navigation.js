@@ -1,10 +1,11 @@
-import { Bell, CalendarDays, Compass, LayoutDashboard, ListChecks, MapPinned, Settings } from 'lucide-react'
+import { Bell, CalendarDays, Compass, LayoutDashboard, Gauge, ListChecks, MapPinned, Settings } from 'lucide-react'
 
 export const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/schedule', label: 'My Schedule', icon: CalendarDays },
   { to: '/checklist', label: 'Smart Checklist', icon: ListChecks },
   { to: '/planner', label: 'Departure Planner', icon: Compass },
+  { to: '/profile', label: 'Prep Profile', icon: Gauge },
   { to: '/places', label: 'Saved Places', icon: MapPinned },
   { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/settings', label: 'Settings', icon: Settings },

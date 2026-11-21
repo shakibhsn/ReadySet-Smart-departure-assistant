@@ -8,6 +8,7 @@ import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { PrepLogPanel } from '@/components/events/PrepLogPanel'
 import { OccurrencePanel } from '@/components/events/OccurrencePanel'
 import { SaveTemplateButton } from '@/components/events/SaveTemplateButton'
 import { ChecklistPanel } from '@/components/checklist/ChecklistPanel'
@@ -132,6 +133,8 @@ export default function EventDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <PrepLogPanel event={event} />
 
       {event.isRecurring && <OccurrencePanel event={event} plan={planQuery.data} onChanged={planQuery.reload} />}
 

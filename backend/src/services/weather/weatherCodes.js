@@ -10,7 +10,10 @@ const TABLE = [
   [[95, 96, 99], 'Thunderstorm', 'thunder'],
 ]
 
+// Heavy rain / violent showers, heavy or freezing precipitation, snow and thunderstorms are "severe".
+const SEVERE = new Set([65, 66, 67, 71, 73, 75, 77, 82, 85, 86, 95, 96, 99])
+
 export function describeWeatherCode(code) {
   const row = TABLE.find(([codes]) => codes.includes(code))
-  return row ? { label: row[1], icon: row[2] } : { label: 'Unknown conditions', icon: 'unknown' }
+  return row ? { label: row[1], icon: row[2], severe: SEVERE.has(code) } : { label: 'Unknown conditions', icon: 'unknown', severe: false }
 }

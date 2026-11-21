@@ -29,7 +29,7 @@ describe('checklist input schemas', () => {
 
 describe('weather helpers', () => {
   it('maps weather codes to a label and icon', () => {
-    expect(describeWeatherCode(0)).toEqual({ label: 'Clear sky', icon: 'clear' })
+    expect(describeWeatherCode(0)).toMatchObject({ label: 'Clear sky', icon: 'clear' })
     expect(describeWeatherCode(63).icon).toBe('rain')
     expect(describeWeatherCode(95).icon).toBe('thunder')
     expect(describeWeatherCode(12345).icon).toBe('unknown')

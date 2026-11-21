@@ -16,6 +16,11 @@ export function createFakeApi({ users, events = {} }) {
   const places = {} // token -> { list, defaultId }
   const packing = {} // token -> personal packing templates
   let forgottenList = []
+  // preparation profile (simplified mirror): server-side state the tests can set
+  const emptyProfile = () => ({ enabled: true, overrides: {}, minSamples: 3, preparation: { overall: { status: 'insufficient_data', samples: 0, needed: 3, message: 'Not enough history yet: 0 of 3 logged preparations.' }, byCategory: {} }, buffer: { status: 'insufficient_data', samples: 0, needed: 3, message: 'Not enough history yet: 0 of 3 logged departures.' }, weekly: { eventsLogged: 0, message: 'No activity logged this week.' , uncheckedWhenLeaving: [] }, oftenUnchecked: [], note: '' })
+  let prepProfile = emptyProfile()
+  let prepLogs = []
+  let prepState = { enabled: true, log: null, occurrenceStart: '2030-05-10T04:00:00.000Z', window: { opensAt: '2030-05-10T02:00:00.000Z', closesAt: '2030-05-10T06:00:00.000Z', open: true } }
   const notes = {} // token -> notifications (newest first)
   const notePrefs = {} // token -> notification preferences
   const defaultPrefs = { enabled: true, upcoming: true, prep: true, departure: true, checklist: true, leadMinutes: 10, browser: false }
@@ -139,6 +144,25 @@ export function createFakeApi({ users, events = {} }) {
     }
     const occMatch = path.match(/^\/events\/([^/]+)\/occurrences(\/skip|\/restore)?$/)
     if (occMatch) return ok({ skipped: true, restored: true, occurrence: null })
+    // ---- preparation profile + tap-to-log ----
+    if (path.startsWith('/events/') && path.endsWith('/prep-log')) {
+      if (method === 'GET') return ok(prepState)
+      const now = new Date().toISOString()
+      const log = prepState.log ?? { id: 'log-1', prepStartedAt: null, readyAt: null, cancelledAt: null, leftAt: null, actualPrepMinutes: null, latenessMinutes: null, uncheckedItems: [] }
+      if (body.action === 'start') Object.assign(log, { prepStartedAt: now, cancelledAt: null })
+      if (body.action === 'ready') Object.assign(log, { readyAt: now, actualPrepMinutes: 30 })
+      if (body.action === 'cancel') Object.assign(log, { cancelledAt: now })
+      if (body.action === 'left') Object.assign(log, { leftAt: now, latenessMinutes: 0 })
+      prepState = { ...prepState, log }
+      return ok({ log, changed: true })
+    }
+    if (path === '/prep-profile') return ok(prepProfile)
+    if (path === '/prep-profile/logs') return ok({ logs: prepLogs })
+    if (path.startsWith('/prep-profile/logs/') && method === 'DELETE') { prepLogs = prepLogs.filter((l) => l.id !== path.split('/')[3]); return ok({}) }
+    if (path === '/prep-profile/data' && method === 'DELETE') { const deleted = prepLogs.length; prepLogs = []; prepProfile = emptyProfile(); return ok({ deleted }) }
+    if (path === '/prep-profile/settings' && method === 'PATCH') { prepProfile = { ...prepProfile, enabled: body.enabled, ...(body.enabled ? {} : { message: 'The preparation profile is turned off: nothing is logged or suggested.' }) }; return ok({ enabled: body.enabled }) }
+    if (path === '/prep-profile/overrides' && method === 'PUT') { prepProfile = { ...prepProfile, overrides: { ...prepProfile.overrides, [body.category]: { ...(body.prepMinutes !== undefined && { prepMinutes: body.prepMinutes }), ...(body.bufferMinutes !== undefined && { bufferMinutes: body.bufferMinutes }) } } }; return ok({ overrides: prepProfile.overrides }) }
+    if (path.startsWith('/prep-profile/overrides/') && method === 'DELETE') { const { [path.split('/')[3]]: _gone, ...rest } = prepProfile.overrides; prepProfile = { ...prepProfile, overrides: rest }; return ok({ overrides: rest }) }
     // ---- saved places, packing templates, forgotten items (simplified mirror; per-token isolation) ----
     if (path === '/places' || path.startsWith('/places/')) {
       const book = (places[token] ??= { list: [], defaultId: null })
@@ -278,6 +302,9 @@ export function createFakeApi({ users, events = {} }) {
     setWeather: (w) => { weatherResult = w },
     /** Seed notifications for a token (newest first). */
     seedNotifications: (token, items) => { (notes[token] ??= []).push(...items.map((n, i) => ({ id: `note-${++seq}-${i}`, eventId: null, type: 'PREP_NOW', category: 'preparation', body: 'Body', read: false, createdAt: new Date().toISOString(), ...n }))) },
+    setPrepProfile: (patch) => { prepProfile = { ...prepProfile, ...patch } },
+    setPrepState: (patch) => { prepState = { ...prepState, ...patch } },
+    setPrepLogs: (list) => { prepLogs = list },
     setForgotten: (list) => { forgottenList = list },
     seedPackingTemplates: (token, list) => { (packing[token] ??= []).push(...list.map((t, n) => ({ id: `pack-seed-${n}`, ...t }))) },
     seedPlaces: (token, list, defaultId = null) => { const b = (places[token] ??= { list: [], defaultId: null }); b.list.push(...list.map((x, n) => ({ id: `place-seed-${n}`, kind: 'other', ...x }))); b.defaultId = defaultId },

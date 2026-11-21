@@ -1,6 +1,6 @@
 import { findOwnedEvent, seriesOf } from '../event.service.js'
 import { expandOccurrences } from '../recurrence.service.js'
-import { locationCandidates, pickHour } from './weatherHelpers.js'
+import { adviceFor, locationCandidates, pickHour } from './weatherHelpers.js'
 
 // Optional, contextual weather for an event (Open-Meteo: free, no API key). It NEVER changes the departure
 // calculation. Every provider problem becomes a normal 200 response with a `status`, so the app keeps working.
@@ -13,6 +13,7 @@ export const FORECAST_DAYS = 16 // Open-Meteo's maximum forecast window
 const GEOCODE_TTL_MS = 24 * 60 * 60 * 1000
 const FORECAST_TTL_MS = 10 * 60 * 1000
 const HOUR = 3_600_000
+export const STALE_LIMIT_MS = 3 * HOUR // an older cached forecast is shown (clearly labelled) only if the provider fails
 
 const geocodeCache = new Map()
 const forecastCache = new Map()
@@ -78,12 +79,19 @@ async function fetchForecast(place, fetchFn, nowMs) {
     temperature_unit: 'celsius',
     wind_speed_unit: 'kmh',
   })
-  const body = await getJson(`${FORECAST_URL}?${params}`, fetchFn)
-  const h = body?.hourly
-  if (!h || !Array.isArray(h.time) || !Number.isFinite(body.utc_offset_seconds)) throw new ProviderError('failed')
-  const entry = { at: nowMs, body }
-  forecastCache.set(key, entry)
-  return entry
+  try {
+    const body = await getJson(`${FORECAST_URL}?${params}`, fetchFn)
+    const h = body?.hourly
+    if (!h || !Array.isArray(h.time) || !Number.isFinite(body.utc_offset_seconds)) throw new ProviderError('failed')
+    const entry = { at: nowMs, body }
+    forecastCache.set(key, entry)
+    for (const [k, v] of forecastCache) if (nowMs - v.at > STALE_LIMIT_MS) forecastCache.delete(k) // keep the cache small
+    return { ...entry, stale: false }
+  } catch (err) {
+    // Provider problem: fall back to the last forecast we loaded, but ONLY if it is recent enough, and say it is not current.
+    if (err instanceof ProviderError && hit && nowMs - hit.at <= STALE_LIMIT_MS) return { ...hit, stale: true }
+    throw err
+  }
 }
 
 const base = (status, eventStartAt, extra = {}) => ({ status, eventStartAt: eventStartAt?.toISOString() ?? null, location: null, forecast: null, fetchedAt: null, ...extra })
@@ -105,10 +113,17 @@ export async function getEventWeather(userId, eventId, now = new Date(), fetchFn
     const place = await geocode(destination, fetchFn, now.getTime())
     if (!place) return base('location_not_found', start, { message: 'We could not find this destination. Try adding a city name.' })
     const location = { name: place.name, region: place.region, country: place.country }
-    const { body, at } = await fetchForecast(place, fetchFn, now.getTime())
+    const { body, at, stale } = await fetchForecast(place, fetchFn, now.getTime())
     const forecast = pickHour(body, start)
     if (!forecast) return base('forecast_unavailable', start, { reason: 'EMPTY', location, message: 'No forecast is available for this time yet.' })
-    return base('ok', start, { location, forecast, fetchedAt: new Date(at).toISOString() })
+    return base('ok', start, {
+      location,
+      forecast,
+      fetchedAt: new Date(at).toISOString(), // when this forecast was LOADED (the forecast's own time is forecast.forecastTime)
+      stale,
+      ...(stale && { message: 'The weather service is not responding. This is the last forecast we could load, not a current one.' }),
+      advice: adviceFor(forecast),
+    })
   } catch (err) {
     if (err instanceof ProviderError) {
       return base(err.kind === 'timeout' ? 'timeout' : 'provider_unavailable', start, {

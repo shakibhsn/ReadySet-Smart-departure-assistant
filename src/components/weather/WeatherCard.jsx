@@ -1,4 +1,4 @@
-import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudOff, CloudRain, CloudSnow, CloudSun, Droplets, MapPin, Sun, Wind } from 'lucide-react'
+import { AlertTriangle, Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudOff, CloudRain, CloudSnow, CloudSun, Droplets, Lightbulb, MapPin, Sun, Wind } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/common/LoadingSkeleton'
@@ -27,6 +27,12 @@ export function WeatherView({ weather, onRetry }) {
   const place = [location.name, location.country].filter(Boolean).join(', ')
   return (
     <>
+      {weather.stale && (
+        <p role="alert" className="mb-3 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm font-medium text-amber-700">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <span>Not current: the weather service is not responding. This forecast was loaded {formatRelative(weather.fetchedAt)}.</span>
+        </p>
+      )}
       <div className="flex items-center gap-4">
         <span className="flex size-16 items-center justify-center rounded-2xl bg-linear-to-br from-amber-50 to-amber-100 text-amber-500 ring-1 ring-inset ring-amber-200" aria-hidden="true">
           <Icon className="size-9" />
@@ -52,8 +58,18 @@ export function WeatherView({ weather, onRetry }) {
           </div>
         )}
       </dl>
+      {weather.advice?.length > 0 && (
+        <ul className="mt-4 space-y-2" aria-label="Weather suggestions">
+          {weather.advice.map((a) => (
+            <li key={a.id} className={a.severity === 'warning' ? 'flex gap-2 rounded-xl bg-rose-50 p-3 text-sm font-medium text-rose-700' : 'flex gap-2 rounded-xl bg-accent-50 p-3 text-sm text-accent-700'}>
+              {a.severity === 'warning' ? <AlertTriangle className="mt-0.5 size-4 shrink-0" /> : <Lightbulb className="mt-0.5 size-4 shrink-0" />}
+              <span>{a.message}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="mt-3 text-xs text-muted">
-        Forecast for {formatDayLabel(forecast.localTime.slice(0, 10))}, {formatTime12(forecast.localTime.slice(11, 16))} (local time at {place}) · updated {formatRelative(weather.fetchedAt)}
+        Forecast for {formatDayLabel(forecast.localTime.slice(0, 10))}, {formatTime12(forecast.localTime.slice(11, 16))} (local time at {place}) · {weather.stale ? 'loaded' : 'updated'} {formatRelative(weather.fetchedAt)}
       </p>
     </>
   )

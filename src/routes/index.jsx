@@ -14,6 +14,7 @@ import CreateEventPage from '@/pages/events/CreateEventPage'
 import EditEventPage from '@/pages/events/EditEventPage'
 import EventDetailPage from '@/pages/events/EventDetailPage'
 import ChecklistPage from '@/pages/checklist/ChecklistPage'
+import PrepProfilePage from '@/pages/profile/PrepProfilePage'
 import PlacesPage from '@/pages/places/PlacesPage'
 import PlannerPage from '@/pages/planner/PlannerPage'
 import NotificationsPage from '@/pages/notifications/NotificationsPage'
@@ -42,6 +43,7 @@ export default function AppRoutes() {
           <Route path="checklist" element={<ChecklistPage />} />
           <Route path="planner" element={<PlannerPage />} />
           <Route path="places" element={<PlacesPage />} />
+          <Route path="profile" element={<PrepProfilePage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

@@ -4,6 +4,7 @@ import { Alert } from '@/components/common/Alert'
 import { FormInput } from '@/components/common/FormInput'
 import { FormSelect } from '@/components/common/FormSelect'
 import { FormTextarea } from '@/components/common/FormTextarea'
+import { PrepHint } from '@/components/events/PrepHint'
 import { PlacePicker } from '@/components/events/PlacePicker'
 import { DeparturePreview } from '@/components/planner/DeparturePreview'
 import { Button } from '@/components/ui/button'
@@ -101,6 +102,7 @@ export function EventForm({ initial, submitLabel, onSubmit, onCancel }) {
           <FormInput label="Travel duration" type="number" inputMode="numeric" min="1" required suffix="min" placeholder="35" value={form.travelMinutes} error={errors.travelMinutes} onChange={set('travelMinutes')} />
           <FormInput label="Preparation time" type="number" inputMode="numeric" min="0" required suffix="min" value={form.prepMinutes} error={errors.prepMinutes} hint="Time you need to get ready." onChange={set('prepMinutes')} />
           <FormInput label="Arrival buffer" type="number" inputMode="numeric" min="0" required suffix="min" value={form.bufferMinutes} error={errors.bufferMinutes} hint="How early you want to arrive." onChange={set('bufferMinutes')} />
+          <PrepHint category={form.category} onUsePrep={(m) => setForm((f) => ({ ...f, prepMinutes: String(m) }))} onUseBuffer={(m) => setForm((f) => ({ ...f, bufferMinutes: String(m) }))} />
           <FormInput label="Duration (optional)" type="number" inputMode="numeric" min="1" suffix="min" placeholder="60" value={form.durationMinutes} error={errors.durationMinutes} hint="Used to spot schedule conflicts. Blank is treated as 60 minutes." onChange={set('durationMinutes')} />
           <FormTextarea className="sm:col-span-2" label="Additional notes" placeholder="Anything to remember?" value={form.notes} error={errors.notes} onChange={set('notes')} />
 
