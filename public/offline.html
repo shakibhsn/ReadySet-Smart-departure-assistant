@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#003D5B" />
+    <title>Offline — ReadySet</title>
+    <style>
+      :root { color-scheme: light dark; --bg: #f4f7fa; --ink: #0b2a3b; --muted: #50667a; --card: #fff; --brand: #30638e; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #071e2b; --ink: #e8f1f7; --muted: #9db3c4; --card: #0d2d40; --brand: #6fa8d6; } }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+      main { max-width: 28rem; background: var(--card); border-radius: 20px; padding: 32px 24px; text-align: center; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); }
+      img { width: 88px; height: 88px; }
+      h1 { font-size: 1.5rem; margin: 16px 0 8px; }
+      p { color: var(--muted); margin: 8px 0; }
+      button { margin-top: 20px; min-height: 44px; padding: 0 24px; border: 0; border-radius: 12px; background: var(--brand); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+      ul { text-align: left; color: var(--muted); font-size: 0.9rem; padding-left: 1.2rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icons/icon-192.png" alt="" />
+      <h1>You are offline</h1>
+      <p>ReadySet could not reach the internet, and this page was not saved on your device yet.</p>
+      <ul>
+        <li>Open ReadySet once while online and signed in. After that, your upcoming events and checklists are available offline.</li>
+        <li>Creating or editing events, weather, notifications and settings always need a connection.</li>
+      </ul>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

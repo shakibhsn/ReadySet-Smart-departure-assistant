@@ -12,9 +12,10 @@ import { NOTIFICATION_CATEGORIES } from '@/data/notifications'
 import { cn } from '@/lib/utils'
 
 export default function NotificationsPage() {
-  const { items, unreadCount, loaded, error, hasMore, actionError, refresh, loadMore, markRead, markAllRead, remove } = useNotifications()
+  const { items, unreadCount, loaded, error, hasMore, actionError, refresh, loadMore, markRead, markAllRead, remove, snooze, unsnooze } = useNotifications()
   const [tab, setTab] = useState('all')
   const [category, setCategory] = useState('all')
+  const [priority, setPriority] = useState('all')
 
   if (!loaded) return <LoadingSkeleton cards={2} />
   if (error && items.length === 0) {
@@ -29,10 +30,12 @@ export default function NotificationsPage() {
   const tabs = [
     { value: 'all', label: `All (${items.length})` },
     { value: 'unread', label: `Unread (${unreadCount})` },
+    { value: 'snoozed', label: `Snoozed (${items.filter((n) => n.snoozedUntil).length})` },
     { value: 'read', label: `Read (${items.filter((n) => n.read).length})` },
   ]
   const visible = items
-    .filter((n) => tab === 'all' || (tab === 'unread' ? !n.read : n.read))
+    .filter((n) => tab === 'all' || (tab === 'unread' ? !n.read && !n.snoozedUntil : tab === 'snoozed' ? Boolean(n.snoozedUntil) : n.read))
+    .filter((n) => priority === 'all' || n.priority === priority)
     .filter((n) => category === 'all' || n.category === category)
 
   return (
@@ -73,6 +76,15 @@ export default function NotificationsPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by priority">
+        <span className="text-xs font-semibold text-muted">Priority</span>
+        {[{ value: 'all', label: 'Any' }, { value: 'urgent', label: 'Urgent' }, { value: 'high', label: 'High' }, { value: 'normal', label: 'Normal' }].map((p) => (
+          <button key={p.value} type="button" onClick={() => setPriority(p.value)} aria-pressed={priority === p.value} className={cn('h-8 cursor-pointer rounded-full border px-3 text-xs font-semibold transition-colors', priority === p.value ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-line bg-surface text-muted hover:border-brand-200')}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
       {items.length === 0 ? (
         <EmptyState icon={BellOff} title="No notifications yet" description="Reminders for preparing, leaving and upcoming events appear here at the right time." />
       ) : visible.length === 0 ? (
@@ -80,7 +92,7 @@ export default function NotificationsPage() {
       ) : (
         <ul className="space-y-3">
           {visible.map((n) => (
-            <NotificationCard key={n.id} notification={n} onMarkRead={markRead} onDelete={remove} />
+            <NotificationCard key={n.id} notification={n} onMarkRead={markRead} onDelete={remove} onSnooze={snooze} onUnsnooze={unsnooze} />
           ))}
         </ul>
       )}

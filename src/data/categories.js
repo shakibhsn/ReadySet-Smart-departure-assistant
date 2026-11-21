@@ -23,3 +23,11 @@ export const TRAVEL_MODES = [
   { value: 'drive', label: 'Drive' },
   { value: 'bike', label: 'Bike' },
 ]
+
+// Event priority (how much the user cares). Shown in the weekly planner only: it never changes times or reminders.
+export const EVENT_PRIORITY_OPTIONS = [
+  { value: 'low', label: 'Low' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'high', label: 'High' },
+]
+export const PRIORITY_TONE = { high: 'bg-rose-50 text-rose-700 ring-rose-200', low: 'bg-slate-100 text-slate-600 ring-slate-200' }

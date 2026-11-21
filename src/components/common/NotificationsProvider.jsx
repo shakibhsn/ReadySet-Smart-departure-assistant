@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NotificationsContext } from '@/lib/notificationsContext'
-import { deleteNotification, getNotificationPreferences, getNotifications, markAllNotificationsRead, markNotificationRead, updateNotificationPreferences } from '@/services/notificationApi'
+import { deleteNotification, getNotificationPreferences, getNotifications, markAllNotificationsRead, markNotificationRead, snoozeNotification, unsnoozeNotification, updateNotificationPreferences } from '@/services/notificationApi'
 
 const POLL_MS = 60_000
 const PAGE = 50
@@ -33,6 +33,10 @@ export function NotificationsProvider({ children }) {
       return
     }
     for (const n of items) {
+      if (n.snoozedUntil) {
+        seen.delete(n.id) // when the snooze ends it counts as new again and may alert once more
+        continue
+      }
       if (n.read || seen.has(n.id)) continue
       seen.add(n.id)
       if (prefsRef.current?.browser && readPermission() === 'granted') {
@@ -95,6 +99,25 @@ export function NotificationsProvider({ children }) {
   const remove = (id) =>
     run((s) => ({ ...s, items: s.items.filter((n) => n.id !== id), unreadCount: Math.max(0, s.unreadCount - (s.items.find((n) => n.id === id && !n.read) ? 1 : 0)) }), () => deleteNotification(id))
 
+  // Snooze hides one unread notification until the chosen time (the server also hides it from the unread count).
+  const applyServerResult = (id) => (result) => setState((s) => ({ ...s, items: s.items.map((n) => (n.id === id ? result.notification : n)), unreadCount: result.unreadCount }))
+  const snooze = async (id, choice) => {
+    setActionError('')
+    try {
+      applyServerResult(id)(await snoozeNotification(id, choice))
+    } catch (error) {
+      setActionError(error.message)
+    }
+  }
+  const unsnooze = async (id) => {
+    setActionError('')
+    try {
+      applyServerResult(id)(await unsnoozeNotification(id))
+    } catch (error) {
+      setActionError(error.message)
+    }
+  }
+
   const savePrefs = useCallback(async (patch) => {
     const previous = prefsRef.current
     setPrefs((p) => ({ ...p, ...patch })) // optimistic
@@ -122,7 +145,7 @@ export function NotificationsProvider({ children }) {
   const value = useMemo(
     () => ({
       items: state.items, unreadCount: state.unreadCount, loaded: state.loaded, error: state.error, hasMore: state.page < state.totalPages, actionError,
-      refresh, loadMore, markRead, markAllRead, remove,
+      refresh, loadMore, markRead, markAllRead, remove, snooze, unsnooze,
       prefs, savePrefs, permission, enableBrowser, disableBrowser,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

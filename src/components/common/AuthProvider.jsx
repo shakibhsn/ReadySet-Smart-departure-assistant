@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AuthContext } from '@/lib/authContext'
 import { ApiError, setUnauthorizedHandler } from '@/lib/apiClient'
+import { offlineStore } from '@/lib/offline/offlineStore'
+import { confirmLogout } from '@/lib/offline/offlineUser'
 import { clearToken, getToken, setToken } from '@/lib/tokenStorage'
 import { currentUserRequest, loginRequest, logoutRequest, registerRequest } from '@/services/authApi'
 
@@ -32,7 +34,13 @@ export function AuthProvider({ children }) {
       .catch((err) => {
         // 401 is handled by the unauthorized handler. Other errors (e.g. server offline) keep the
         // token so a refresh can retry, but the user is treated as signed out for now.
-        if (!cancelled && !(err instanceof ApiError && err.status === 401)) setUser(null)
+        if (cancelled || (err instanceof ApiError && err.status === 401)) return
+        // OFFLINE: if the server cannot be reached, reopen with the profile saved on this device (same token, same user).
+        // It is only a local view: the first request that reaches the server confirms or ends the session.
+        if (err?.isNetworkError) {
+          return offlineStore.loadSession().then((saved) => !cancelled && setUser(saved?.user ?? null)) // returned so loading stays true until it is set
+        }
+        setUser(null)
       })
       .finally(() => !cancelled && setLoading(false))
     return () => {
@@ -43,6 +51,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(async ({ email, password, remember = false }) => {
     const res = await loginRequest({ email, password })
     setToken(res.data.token, { remember })
+    offlineStore.purgeOtherUsers(res.data.user.id) // another account used this device before: none of its data may remain
     setUser(res.data.user)
     return res.data.user
   }, [])
@@ -61,7 +70,9 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     // JWTs are stateless: the server cannot revoke them, so logging out = discarding the token.
     // The request is best effort and its failure must never block logging out locally.
+    if (!(await confirmLogout())) return // unsynced offline changes: the user chose to stay signed in
     await logoutRequest().catch(() => {})
+    await offlineStore.clearAll() // explicit sign-out removes every offline copy from this device
     clearSession()
   }, [clearSession])
 

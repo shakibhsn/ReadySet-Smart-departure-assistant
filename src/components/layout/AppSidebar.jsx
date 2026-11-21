@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LogOut, X } from 'lucide-react'
 import { Logo } from '@/components/common/Logo'
+import { InstallAppButton } from '@/components/common/InstallAppButton'
 import { Avatar } from './Avatar'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useAuth } from '@/hooks/useAuth'
@@ -73,6 +74,7 @@ export function AppSidebar({ onNavigate, onClose, showClose = false }) {
             <p className="truncate text-xs text-muted">{user?.email}</p>
           </div>
         </div>
+        <InstallAppButton />
         <button
           type="button"
           onClick={handleLogout}

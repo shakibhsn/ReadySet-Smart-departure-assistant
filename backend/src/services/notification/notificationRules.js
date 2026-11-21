@@ -62,3 +62,34 @@ export function dueNotifications({ event, start, prefs, pendingCount = 0, now = 
     .filter((c) => c.sendAt <= now && now < c.expiresAt && now.getTime() - c.sendAt.getTime() <= GRACE_MINUTES * MIN)
     .map(({ expiresAt: _expiresAt, ...c }) => ({ ...c, dedupeKey: dedupeKeyFor(event.id, start, c.kind) }))
 }
+
+// ---------- priority (derived from the type: needs no stored column) ----------
+
+export const PRIORITIES = ['normal', 'high', 'urgent']
+const PRIORITY_BY_TYPE = { DEPARTURE_NOW: 'urgent', PREP_NOW: 'high', DEPARTURE_SOON: 'high', CHECKLIST: 'high' }
+export const priorityFor = (type) => PRIORITY_BY_TYPE[type] ?? 'normal'
+export const typesWithPriority = (priority) => REMINDER_TYPES.filter((t) => priorityFor(t) === priority)
+
+// ---------- snooze (PURE: the clock and the occurrence are passed in) ----------
+
+export const SNOOZE_CHOICES = ['10m', '1h', 'until_event']
+const SNOOZE_MINUTES = { '10m': 10, '1h': 60 }
+
+/**
+ * Where a snooze ends. Never later than the occurrence start: a "leave now" reminder that comes back after the
+ * event began would be stale. Returns { until: Date } or { error: string }.
+ */
+export function snoozeUntil(choice, { now, occurrenceStart }) {
+  if (!SNOOZE_CHOICES.includes(choice)) return { error: 'Unknown snooze choice' }
+  const start = occurrenceStart ?? null
+  if (choice === 'until_event') {
+    if (!start) return { error: 'This notification is not tied to an event time' }
+    if (start <= now) return { error: 'The event has already started' }
+    return { until: start }
+  }
+  const until = new Date(now.getTime() + SNOOZE_MINUTES[choice] * MIN)
+  if (start && start <= now) return { error: 'The event has already started' }
+  return { until: start && until > start ? start : until }
+}
+
+export const isSnoozed = (snoozedUntil, now = new Date()) => Boolean(snoozedUntil) && snoozedUntil > now

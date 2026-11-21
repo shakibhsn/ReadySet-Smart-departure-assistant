@@ -1,4 +1,4 @@
-import { prisma } from '../../config/database.js'
+import { prisma, supportsField } from '../../config/database.js'
 import { AppError } from '../../utils/apiResponse.js'
 import { CHECKLIST_TEMPLATES } from './checklistTemplates.js'
 
@@ -9,7 +9,7 @@ export const MAX_ITEMS_PER_EVENT = 100
 const notFoundEvent = () => new AppError(404, 'Event not found')
 const notFoundItem = () => new AppError(404, 'Checklist item not found')
 
-const toPublic = (i) => ({ id: i.id, eventId: i.eventId, text: i.text, group: i.group, done: i.done, position: i.position, createdAt: i.createdAt.toISOString(), updatedAt: i.updatedAt.toISOString() })
+const toPublic = (i) => ({ id: i.id, eventId: i.eventId, text: i.text, group: i.group, done: i.done, completedAt: i.completedAt?.toISOString() ?? null, position: i.position, createdAt: i.createdAt.toISOString(), updatedAt: i.updatedAt.toISOString() })
 
 export const progressOf = (items) => {
   const total = items.length
@@ -77,12 +77,32 @@ export async function applyTemplate(userId, eventId, { template, personalTemplat
 }
 
 export async function updateItem(userId, eventId, itemId, patch) {
-  const result = await prisma.checklistItem.updateMany({ where: { id: itemId, eventId, userId }, data: patch })
-  if (result.count === 0) throw notFoundItem()
+  const data = { ...patch }
+  // completedAt (needs the migrated column + regenerated client): set when ticked, cleared when unticked.
+  if (patch.done !== undefined && supportsField('ChecklistItem', 'completedAt')) data.completedAt = patch.done ? new Date() : null
+  const result = await prisma.checklistItem.updateMany({ where: { id: itemId, eventId, userId, ...(patch.done === true && data.completedAt && { OR: [{ done: false }, { completedAt: null }] }) }, data })
+  if (result.count === 0) {
+    const exists = await prisma.checklistItem.count({ where: { id: itemId, eventId, userId } }) // already ticked: the first completion time is kept
+    if (exists === 0) throw notFoundItem()
+  }
   return toPublic(await prisma.checklistItem.findFirst({ where: { id: itemId, eventId, userId } }))
 }
 
-export const setCompletion = (userId, eventId, itemId, done) => updateItem(userId, eventId, itemId, { done })
+/**
+ * Tick / untick. With baseUpdatedAt (offline sync) the change is refused with 409 if the item was changed on the server
+ * after the client's copy AND the server's state differs from what the client wants. Equal state = already done (idempotent).
+ */
+export async function setCompletion(userId, eventId, itemId, done, baseUpdatedAt) {
+  if (baseUpdatedAt) {
+    const row = await prisma.checklistItem.findFirst({ where: { id: itemId, eventId, userId } })
+    if (!row) throw notFoundItem()
+    if (row.done === done) return toPublic(row)
+    if (row.updatedAt.getTime() > new Date(baseUpdatedAt).getTime()) {
+      throw new AppError(409, 'This item was changed somewhere else after your offline edit, so your change was not applied.', [], 'SYNC_CONFLICT')
+    }
+  }
+  return updateItem(userId, eventId, itemId, { done })
+}
 
 export async function deleteItem(userId, eventId, itemId) {
   const result = await prisma.checklistItem.deleteMany({ where: { id: itemId, eventId, userId } })

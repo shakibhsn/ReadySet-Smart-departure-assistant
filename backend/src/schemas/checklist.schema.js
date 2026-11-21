@@ -14,7 +14,8 @@ export const updateItemSchema = z
   .strictObject({ text: text.optional(), group: group.optional(), done: z.boolean({ error: 'done must be true or false' }).optional() })
   .refine((v) => Object.keys(v).length > 0, 'Provide at least one field to change')
 
-export const completionSchema = z.strictObject({ done: z.boolean({ error: 'done must be true or false' }) })
+// baseUpdatedAt (optional): the item's updatedAt as the client last saw it. Used by offline sync to detect that the item changed meanwhile.
+export const completionSchema = z.strictObject({ done: z.boolean({ error: 'done must be true or false' }), baseUpdatedAt: z.iso.datetime({ error: 'baseUpdatedAt must be an ISO date-time' }).optional() })
 
 // With no template given, the one matching the event's category is used.
 export const applyTemplateSchema = z

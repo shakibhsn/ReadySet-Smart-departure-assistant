@@ -21,7 +21,7 @@ export async function update(req, res) {
 }
 export async function complete(req, res) {
   const { id, itemId } = req.validated.params
-  sendSuccess(res, 200, 'Item updated', { item: await service.setCompletion(req.userId, id, itemId, req.body.done) })
+  sendSuccess(res, 200, 'Item updated', { item: await service.setCompletion(req.userId, id, itemId, req.body.done, req.body.baseUpdatedAt) })
 }
 export async function remove(req, res) {
   const { id, itemId } = req.validated.params

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useOffline } from '@/hooks/useOffline'
 import { reportForgotten } from '@/services/packingApi'
 import { addChecklistItem, applyChecklistTemplate, deleteChecklistItem, getChecklist, setChecklistItemDone, updateChecklistItem } from '@/services/checklistApi'
 import { getProgress } from '@/utils/events'
@@ -14,15 +15,16 @@ export function useChecklist(eventId) {
   const [actionError, setActionError] = useState('')
   const [notice, setNotice] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const { syncVersion } = useOffline() // reload after offline changes were synced (or refused)
 
   useEffect(() => {
     if (!eventId) return undefined
     let cancelled = false
     getChecklist(eventId)
-      .then((data) => !cancelled && setState({ eventId, items: data.items, loadError: null }))
+      .then((data) => { if (cancelled) return; setState({ eventId, items: data.items, loadError: null }); setNotice('') })
       .catch((error) => !cancelled && setState({ eventId, items: [], loadError: error }))
     return () => { cancelled = true }
-  }, [eventId, attempt])
+  }, [eventId, attempt, syncVersion])
 
   const settled = !eventId || state.eventId === eventId // no event = nothing to load
   const items = settled && eventId ? state.items : []
@@ -43,7 +45,8 @@ export function useChecklist(eventId) {
     const done = !item.done
     setItems((list) => list.map((i) => (i.id === item.id ? { ...i, done } : i)))
     try {
-      await setChecklistItemDone(eventId, item.id, done)
+      const saved = await setChecklistItemDone(eventId, item.id, done)
+      if (saved?.pendingSync) setNotice('Saved on this device. It will sync when you are back online.')
     } catch (error) {
       setItems((list) => list.map((i) => (i.id === item.id ? { ...i, done: item.done } : i)))
       throw error

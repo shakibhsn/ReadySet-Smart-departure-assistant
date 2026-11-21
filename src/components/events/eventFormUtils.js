@@ -34,6 +34,7 @@ export function emptyEventForm({ timezone, prepMinutes = 30, bufferMinutes = 10,
     prepMinutes: String(prepMinutes), bufferMinutes: String(bufferMinutes), notes: '', timezone,
     recurring: false, frequency: 'DAILY', interval: '1', weekdays: [], endsOn: '', endMode: 'never', count: '',
     durationMinutes: '', hadDuration: false,
+    priority: 'normal', initialPriority: 'normal',
   }
 }
 
@@ -49,6 +50,7 @@ export function eventToForm(event) {
     weekdays: r?.daysOfWeek ?? [], endsOn: r?.endsOn ?? '',
     endMode: r?.count ? 'count' : r?.endsOn ? 'date' : 'never', count: r?.count ? String(r.count) : '',
     durationMinutes: event.durationMinutes ? String(event.durationMinutes) : '', hadDuration: Boolean(event.durationMinutes),
+    priority: event.priority ?? 'normal', initialPriority: event.priority ?? 'normal',
   }
 }
 
@@ -93,6 +95,8 @@ export function formToPayload(form) {
     arrivalBufferMinutes: Number(form.bufferMinutes),
     // Optional: blank = unknown (only sent when set, or to clear a duration that existed).
     ...(form.durationMinutes !== '' ? { durationMinutes: Number(form.durationMinutes) } : form.hadDuration ? { durationMinutes: null } : {}),
+    // Only sent when the user changed it, so saving an event never touches a field the user did not touch.
+    ...(form.priority && form.priority !== (form.initialPriority ?? 'normal') ? { priority: form.priority } : {}),
     recurrence: form.recurring
       ? {
           frequency: form.frequency,

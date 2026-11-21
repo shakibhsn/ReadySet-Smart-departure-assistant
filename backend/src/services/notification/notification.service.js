@@ -1,16 +1,23 @@
-import { prisma } from '../../config/database.js'
+import { prisma, supportsField } from '../../config/database.js'
 import { AppError } from '../../utils/apiResponse.js'
+import { isSnoozed, priorityFor, snoozeUntil, typesWithPriority } from './notificationRules.js'
 
 // SECURITY (IDOR): userId always comes from the verified JWT and is part of EVERY query below, so a
 // notification id alone never lets anyone read, change or delete another user's notification.
 
 const notFound = () => new AppError(404, 'Notification not found')
 
-const toPublic = (n) => ({
+// Snooze needs the migrated column AND a regenerated client; until then it is simply absent (never an error).
+export const snoozeSupported = () => supportsField('Notification', 'snoozedUntil')
+const notSnoozed = (now) => (snoozeSupported() ? { OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }] } : {})
+
+const toPublic = (n, now = new Date()) => ({
   id: n.id,
   eventId: n.eventId,
   type: n.type,
   category: n.category,
+  priority: priorityFor(n.type),
+  snoozedUntil: isSnoozed(n.snoozedUntil, now) ? n.snoozedUntil.toISOString() : null,
   title: n.title,
   body: n.body,
   read: n.readAt !== null,
@@ -18,16 +25,24 @@ const toPublic = (n) => ({
   createdAt: n.createdAt.toISOString(),
 })
 
-export const countUnread = (userId) => prisma.notification.count({ where: { userId, readAt: null } })
+export const countUnread = (userId, now = new Date()) => prisma.notification.count({ where: { userId, readAt: null, ...notSnoozed(now) } })
 
-export async function listNotifications(userId, { status = 'all', category, page = 1, limit = 20 } = {}) {
-  const where = { userId, ...(status === 'unread' && { readAt: null }), ...(status === 'read' && { readAt: { not: null } }), ...(category && { category }) }
+export async function listNotifications(userId, { status = 'all', category, priority, page = 1, limit = 20 } = {}, now = new Date()) {
+  // 'unread' hides snoozed ones; 'snoozed' lists only those; 'all' / 'read' is the full history.
+  const where = {
+    userId,
+    ...(status === 'unread' && { readAt: null, ...notSnoozed(now) }),
+    ...(status === 'read' && { readAt: { not: null } }),
+    ...(status === 'snoozed' && (snoozeSupported() ? { readAt: null, snoozedUntil: { gt: now } } : { id: { in: [] } })),
+    ...(category && { category }),
+    ...(priority && { type: { in: typesWithPriority(priority) } }),
+  }
   const [rows, total, unreadCount] = await Promise.all([
     prisma.notification.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (page - 1) * limit, take: limit }),
     prisma.notification.count({ where }),
-    countUnread(userId),
+    countUnread(userId, now),
   ])
-  return { notifications: rows.map(toPublic), unreadCount, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } }
+  return { notifications: rows.map((r) => toPublic(r, now)), unreadCount, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } }
 }
 
 export async function markRead(userId, id) {
@@ -83,4 +98,25 @@ export async function updatePreferences(userId, input) {
     if (err.code === 'P2025') throw new AppError(404, 'Preferences not found')
     throw err
   }
+}
+
+// ---------- snooze ----------
+
+/** Hides one UNREAD notification until the chosen time (never past its event's start). userId is part of the query: no IDOR. */
+export async function snoozeNotification(userId, id, choice, now = new Date()) {
+  if (!snoozeSupported()) throw new AppError(503, 'Snooze is not available yet: the database update has not been applied')
+  const row = await prisma.notification.findFirst({ where: { id, userId } })
+  if (!row) throw notFound()
+  if (row.readAt) throw new AppError(409, 'Only unread notifications can be snoozed')
+  const result = snoozeUntil(choice, { now, occurrenceStart: row.occurrenceStart })
+  if (result.error) throw new AppError(400, 'Validation failed', [{ field: 'choice', message: result.error }])
+  await prisma.notification.updateMany({ where: { id, userId, readAt: null }, data: { snoozedUntil: result.until } })
+  return { notification: toPublic({ ...row, snoozedUntil: result.until }, now), unreadCount: await countUnread(userId, now) }
+}
+
+export async function unsnoozeNotification(userId, id, now = new Date()) {
+  if (!snoozeSupported()) throw new AppError(503, 'Snooze is not available yet: the database update has not been applied')
+  const result = await prisma.notification.updateMany({ where: { id, userId }, data: { snoozedUntil: null } })
+  if (result.count === 0) throw notFound()
+  return { notification: toPublic(await prisma.notification.findFirst({ where: { id, userId } }), now), unreadCount: await countUnread(userId, now) }
 }

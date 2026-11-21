@@ -8,6 +8,8 @@ import checklistRoutes, { templatesRouter } from './routes/checklist.routes.js'
 import { occurrenceRouter, scheduleRouter, templateRouter } from './routes/schedule.routes.js'
 import { forgotRouter, packingRouter, packingTemplatesRouter, placesRouter } from './routes/packing.routes.js'
 import { prepEventRouter, prepProfileRouter } from './routes/prep.routes.js'
+import { analyticsRouter, weekRouter } from './routes/analytics.routes.js'
+import { createAssistantRouter } from './routes/assistant.routes.js'
 import notificationRoutes from './routes/notification.routes.js'
 import departureRoutes from './routes/departure.routes.js'
 import eventRoutes from './routes/event.routes.js'
@@ -43,6 +45,9 @@ export function createApp(options = {}) {
   app.use('/api/checklist-templates', templatesRouter)
   app.use('/api/departure', departureRoutes)
   app.use('/api/notifications', notificationRoutes)
+  app.use('/api/analytics', analyticsRouter)
+  app.use('/api/week', weekRouter)
+  app.use('/api/assistant', createAssistantRouter(options))
 
   app.use(notFoundHandler)
   app.use(errorHandler)

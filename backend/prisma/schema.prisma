@@ -112,6 +112,8 @@ model Event {
   arrivalBufferMinutes  Int      @map("arrival_buffer_minutes")
   // NULL = unknown. The conflict detector then ASSUMES 60 minutes and says so.
   durationMinutes       Int?     @map("duration_minutes")
+  // low | normal | high: how much the user cares about this event (shown in the weekly planner and used for conflict emphasis).
+  priority              String   @default("normal") @db.VarChar(8)
   isRecurring           Boolean  @default(false) @map("is_recurring")
   recurrenceRuleId      String?  @unique @map("recurrence_rule_id") @db.Uuid
   createdAt             DateTime @default(now()) @map("created_at")
@@ -179,6 +181,8 @@ model ChecklistItem {
   text      String   @db.VarChar(120)
   group     String   @default("Essentials") @map("item_group") @db.VarChar(20)
   done      Boolean  @default(false)
+  // When it was last ticked (cleared when unticked). Items ticked before this column existed have no time.
+  completedAt DateTime? @map("completed_at")
   position  Int      @default(0)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -205,11 +209,14 @@ model Notification {
   occurrenceStart DateTime? @map("occurrence_start")
   dedupeKey       String    @unique @map("dedupe_key") @db.VarChar(200)
   readAt          DateTime? @map("read_at")
+  // Snooze: while snoozedUntil is in the future the notification is hidden from the unread list/count; it stays in history.
+  snoozedUntil    DateTime? @map("snoozed_until")
   createdAt       DateTime  @default(now()) @map("created_at")
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
+  @@index([userId, snoozedUntil])
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, readAt])
   @@index([eventId])

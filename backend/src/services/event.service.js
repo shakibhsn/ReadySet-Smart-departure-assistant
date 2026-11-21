@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon'
-import { prisma } from '../config/database.js'
+import { prisma, supportsField } from '../config/database.js'
 import { AppError } from '../utils/apiResponse.js'
 import { DEFAULT_TIMEZONE, isDateString, localParts, parseStart, startOfLocalDay, toZone } from '../utils/timezone.js'
 import { invalidateEventReminders } from './notification/notification.service.js'
@@ -45,6 +45,7 @@ export function toPublicEvent(event, occurrenceStart = null, meta = {}) {
     preparationMinutes: event.preparationMinutes,
     arrivalBufferMinutes: event.arrivalBufferMinutes,
     durationMinutes: event.durationMinutes ?? null,
+    priority: event.priority ?? 'normal',
     isRecurring: event.isRecurring,
     recurrence: toPublicRecurrence(event.recurrenceRule, event.timezone),
     seriesStartAt: event.startAt.toISOString(),
@@ -122,7 +123,16 @@ async function resolveRange({ from, to, timezone }, userId) {
 
 // ---------- operations ----------
 
+// Event priority needs the migrated column AND a regenerated client; until then asking for a non-default value is a clear 503, never a silent drop.
+function priorityData(input) {
+  if (input.priority === undefined) return {}
+  if (supportsField('Event', 'priority')) return { priority: input.priority }
+  if (input.priority === 'normal') return {}
+  throw new AppError(503, 'Event priority is not available yet: the database update has not been applied')
+}
+
 export async function createEvent(userId, input) {
+  const extra = priorityData(input)
   const timezone = input.timezone ?? (await getUserTimezone(userId))
   const start = resolveStart(input.startAt, timezone)
   const rule = input.recurrence ? buildRuleData(input.recurrence, start, timezone) : null
@@ -143,6 +153,7 @@ export async function createEvent(userId, input) {
         preparationMinutes: input.preparationMinutes,
         arrivalBufferMinutes: input.arrivalBufferMinutes,
         durationMinutes: input.durationMinutes ?? null,
+        ...extra,
         isRecurring: Boolean(created),
         recurrenceRuleId: created?.id ?? null,
       },
@@ -210,7 +221,7 @@ export async function updateEvent(userId, id, input) {
     ruleChange = buildRuleData({ frequency: old.frequency, interval: old.interval, daysOfWeek: old.daysOfWeek.length ? old.daysOfWeek : undefined, ...(old.occurrenceCount ? { count: old.occurrenceCount } : { endsOn }) }, start, timezone)
   }
 
-  const data = {}
+  const data = { ...priorityData(input) }
   for (const key of ['title', 'category', 'destination', 'notes', 'travelDurationMinutes', 'preparationMinutes', 'arrivalBufferMinutes', 'durationMinutes']) {
     if (input[key] !== undefined) data[key] = input[key]
   }

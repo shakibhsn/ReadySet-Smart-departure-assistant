@@ -45,6 +45,10 @@ const schema = z.object({
   SUPPORT_EMAIL: blank(z.email().optional()),
   EMAIL_VERIFICATION_REQUIRED: blank(flag),
   EMAIL_REMINDERS_ENABLED: blank(flag),
+
+  // ---- AI Departure Assistant (optional: without a key the assistant answers from rules, never from a model) ----
+  ANTHROPIC_API_KEY: blank(z.string().min(10).optional()),
+  ASSISTANT_MODEL: blank(z.string().min(3).max(80).default('claude-haiku-5-5')),
 })
 
 /** Name of the database inside a postgres URL (never log the rest of the URL: it has the password). */

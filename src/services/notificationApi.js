@@ -4,6 +4,8 @@ import { queryString } from '@/lib/queryString'
 export const getNotifications = async (params) => (await apiRequest(`/notifications${queryString(params)}`)).data
 export const markNotificationRead = async (id) => (await apiRequest(`/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH' })).data
 export const markAllNotificationsRead = async () => (await apiRequest('/notifications/read-all', { method: 'POST' })).data
+export const snoozeNotification = async (id, choice) => (await apiRequest(`/notifications/${encodeURIComponent(id)}/snooze`, { method: 'POST', body: { choice } })).data
+export const unsnoozeNotification = async (id) => (await apiRequest(`/notifications/${encodeURIComponent(id)}/snooze`, { method: 'DELETE' })).data
 export const deleteNotification = async (id) => (await apiRequest(`/notifications/${encodeURIComponent(id)}`, { method: 'DELETE' })).data
 
 export const getNotificationPreferences = async () => (await apiRequest('/users/me/notification-preferences')).data.preferences

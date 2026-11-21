@@ -24,3 +24,9 @@ export async function getPreferences(req, res) {
 export async function updatePreferences(req, res) {
   sendSuccess(res, 200, 'Notification preferences updated', { preferences: await service.updatePreferences(req.userId, req.body) })
 }
+export async function snooze(req, res) {
+  sendSuccess(res, 200, 'Notification snoozed', await service.snoozeNotification(req.userId, req.validated.params.id, req.body.choice))
+}
+export async function unsnooze(req, res) {
+  sendSuccess(res, 200, 'Snooze cleared', await service.unsnoozeNotification(req.userId, req.validated.params.id))
+}

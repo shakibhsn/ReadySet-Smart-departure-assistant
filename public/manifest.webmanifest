@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "ReadySet — Smart Departure Assistant",
+  "short_name": "ReadySet",
+  "description": "Know when to start preparing and when to leave. Don't rush. Be ready.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#003D5B",
+  "theme_color": "#003D5B",
+  "categories": ["productivity", "lifestyle"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Weekly Planner", "url": "/week", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Smart Checklist", "url": "/checklist", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "name": "test data created through the real API",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "manifest loads with no errors",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "manifest parsed fields",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "installability errors",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "service worker registered and activated",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "offline snapshot saved for user A (events + checklist)",
+    "ok": true,
+    "detail": "events=1 checklists=3"
+  },
+  {
+    "name": "no auth token or password stored in the offline database",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "service worker caches contain no API URLs",
+    "ok": true,
+    "detail": "9 cached files"
+  },
+  {
+    "name": "assistant answers from real data, labelled rules-based",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "app shell opens offline (service worker) and shows the offline banner",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "saved checklist is readable offline",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "offline tick is queued exactly once on the device",
+    "ok": true,
+    "detail": "[{\"done\":true}]"
+  },
+  {
+    "name": "server is unchanged while offline",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "after reconnect the tick reached the server",
+    "ok": true,
+    "detail": "online=true"
+  },
+  {
+    "name": "queue is empty after sync (no duplicate replay)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a conflicting offline edit is NOT forced through and the user is told",
+    "ok": true,
+    "detail": "boxes=3"
+  },
+  {
+    "name": "switching to user B purged every record of user A",
+    "ok": true,
+    "detail": "session=B"
+  },
+  {
+    "name": "explicit logout removes all offline data from the device",
+    "ok": true,
+    "detail": "{\"checklists\":0,\"events\":0,\"queue\":0,\"session\":0}"
+  }
+]

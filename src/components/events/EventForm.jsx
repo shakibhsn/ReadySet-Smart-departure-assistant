@@ -9,7 +9,7 @@ import { PlacePicker } from '@/components/events/PlacePicker'
 import { DeparturePreview } from '@/components/planner/DeparturePreview'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { EVENT_CATEGORIES } from '@/data/categories'
+import { EVENT_CATEGORIES, EVENT_PRIORITY_OPTIONS } from '@/data/categories'
 import { ApiError, fieldErrorsFrom } from '@/lib/apiClient'
 import { usePreviewPlan } from '@/hooks/usePreviewPlan'
 import { END_MODES, FREQUENCIES, FREQUENCY_UNITS, SERVER_FIELD, WEEKDAYS, formToPayload, timezoneOptions, validateEventForm } from './eventFormUtils'
@@ -91,6 +91,7 @@ export function EventForm({ initial, submitLabel, onSubmit, onCancel }) {
           {formError && <Alert className="sm:col-span-2">{formError}</Alert>}
           <h3 className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700 sm:col-span-2"><span>Event</span><span aria-hidden="true" className="h-px flex-1 bg-line" /></h3>
           <FormInput className="sm:col-span-2" label="Event title" required placeholder="e.g. Database Systems Class" value={form.title} error={errors.title} onChange={set('title')} />
+          <FormSelect label="Priority" options={EVENT_PRIORITY_OPTIONS} value={form.priority ?? 'normal'} onChange={set('priority')} hint="Shown in your weekly planner. It does not change reminders or times." />
           <FormSelect label="Category" required placeholder="Select a category" options={EVENT_CATEGORIES} value={form.category} error={errors.category} onChange={set('category')} />
           <FormInput label="Destination" icon={MapPin} placeholder="Building, address or place" value={form.destination} error={errors.destination} onChange={set('destination')} />
           <PlacePicker onPick={(address) => setForm((f) => ({ ...f, destination: address }))} />

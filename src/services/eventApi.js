@@ -1,5 +1,7 @@
 import { apiRequest } from '@/lib/apiClient'
 import { queryString as query } from '@/lib/queryString'
+import { offlineStore } from '@/lib/offline/offlineStore'
+import { getOfflineUser } from '@/lib/offline/offlineUser'
 
 /**
  * HOW DATE-TIMES TRAVEL BETWEEN FRONTEND AND BACKEND
@@ -45,7 +47,19 @@ export const updateEvent = async (id, payload) =>
 
 export const deleteEvent = (id) => apiRequest(`/events/${encodeURIComponent(id)}`, { method: 'DELETE' })
 
-export const getUpcomingEvents = async (params) => eventsOf(await apiRequest(`/events/upcoming${query(params)}`))
+/** OFFLINE: the last upcoming list is kept per user; shown only when the server cannot be reached. */
+export const getUpcomingEvents = async (params) => {
+  const userId = getOfflineUser()
+  try {
+    return eventsOf(await apiRequest(`/events/upcoming${query(params)}`))
+  } catch (error) {
+    if (error?.isNetworkError && userId) {
+      const saved = await offlineStore.loadEvents(userId)
+      if (saved) return saved.events.slice(0, params?.limit ?? 50)
+    }
+    throw error
+  }
+}
 
 /** All occurrences (recurring series expanded) between two days, e.g. for calendar views. */
 export const getOccurrences = async (params) => eventsOf(await apiRequest(`/events/occurrences${query(params)}`))

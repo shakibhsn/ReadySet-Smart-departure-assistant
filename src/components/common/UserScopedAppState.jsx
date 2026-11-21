@@ -1,6 +1,7 @@
 import { AppStateProvider } from './AppStateProvider'
 import { EventsProvider } from './EventsProvider'
 import { NotificationsProvider } from './NotificationsProvider'
+import { OfflineProvider } from './OfflineProvider'
 import { useAuth } from '@/hooks/useAuth'
 
 /**
@@ -14,7 +15,9 @@ export function UserScopedAppState({ children }) {
   return (
     <AppStateProvider key={user?.id ?? 'signed-out'}>
       <NotificationsProvider>
-        <EventsProvider>{children}</EventsProvider>
+        <EventsProvider>
+          <OfflineProvider>{children}</OfflineProvider>
+        </EventsProvider>
       </NotificationsProvider>
     </AppStateProvider>
   )

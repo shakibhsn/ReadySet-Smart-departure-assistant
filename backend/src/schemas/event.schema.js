@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { isDateString, isInstantString, isLocalDateTimeString, isValidTimezone } from '../utils/timezone.js'
 
+export const EVENT_PRIORITIES = ['low', 'normal', 'high']
 export const EVENT_CATEGORIES = ['university', 'office', 'interview', 'business', 'appointment', 'travel', 'gym', 'personal', 'other']
 export const EVENT_SORTS = ['startAt', '-startAt', 'createdAt', '-createdAt']
 
@@ -48,6 +49,7 @@ const fields = {
   notes: optionalText(2000, 'Notes'),
   travelDurationMinutes: z.number({ error: 'Travel duration must be a number' }).int('Travel duration must be a whole number').min(1, 'Travel duration must be at least 1 minute').max(1440, 'Travel duration must be at most 1440 minutes'),
   preparationMinutes: z.number({ error: 'Preparation time must be a number' }).int('Preparation time must be a whole number').min(0, 'Preparation time cannot be negative').max(1440, 'Preparation time must be at most 1440 minutes'),
+  priority: z.enum(EVENT_PRIORITIES, { error: `Priority must be one of: ${EVENT_PRIORITIES.join(', ')}` }),
   durationMinutes: z.number({ error: 'Duration must be a number' }).int('Duration must be a whole number').min(1, 'Duration must be at least 1 minute').max(1440, 'Duration must be at most 1440 minutes').nullish(),
   arrivalBufferMinutes: z.number({ error: 'Arrival buffer must be a number' }).int('Arrival buffer must be a whole number').min(0, 'Arrival buffer cannot be negative').max(1440, 'Arrival buffer must be at most 1440 minutes'),
 }
@@ -55,6 +57,7 @@ const fields = {
 // userId is intentionally NOT accepted: ownership always comes from the verified JWT.
 export const createEventSchema = z.strictObject({
   ...fields,
+  priority: fields.priority.optional(), // defaults to normal
   timezone: timezone.optional(), // defaults to the user's saved timezone preference
   recurrence: recurrence.nullish(),
 })
@@ -71,6 +74,7 @@ export const updateEventSchema = z
     preparationMinutes: fields.preparationMinutes,
     arrivalBufferMinutes: fields.arrivalBufferMinutes,
     durationMinutes: fields.durationMinutes,
+    priority: fields.priority,
     recurrence: recurrence.nullable(), // object = set/replace, null = remove, absent = unchanged
   })
   .partial()
