@@ -27,6 +27,7 @@ export const SUPPORTED_HELP = [
   'Am I likely to be late for my next event?',
 ]
 const MODEL_TIMEOUT_MS = 8000
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const UNCERTAINTY = 'Times come from the values saved on your events. Live traffic is not available, so real travel can take longer.'
 
 const safe = async (fn) => {
@@ -140,15 +141,26 @@ const SYSTEM_PROMPT = [
 ].join(' ')
 
 async function rewordWithModel({ question, draft, facts, apiKey, model, fetchFn }) {
-  const response = await fetchFn('https://api.anthropic.com/v1/messages', {
+  // OpenRouter's OpenAI-compatible chat endpoint. No tools, no functions, no streaming: plain text in, plain text out.
+  const response = await fetchFn(OPENROUTER_URL, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model, max_tokens: 400, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: JSON.stringify({ question: sanitizeText(question, 300), draft, facts }) }] }),
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}`, 'HTTP-Referer': env.APP_BASE_URL ?? env.FRONTEND_URL, 'X-Title': 'ReadySet' },
+    body: JSON.stringify({
+      model,
+      max_tokens: 400,
+      temperature: 0.2,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: JSON.stringify({ question: sanitizeText(question, 300), draft, facts }) },
+      ],
+    }),
     signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
   })
   if (!response.ok) throw new Error(`provider_${response.status}`)
   const body = await response.json()
-  const text = body?.content?.find?.((c) => c.type === 'text')?.text ?? ''
+  if (body?.error) throw new Error('provider_error') // OpenRouter can report a model failure inside a 200 reply
+  const raw = body?.choices?.[0]?.message?.content
+  const text = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw.map((p) => p?.text ?? '').join('') : ''
   const start = text.indexOf('{')
   const end = text.lastIndexOf('}')
   if (start < 0 || end <= start) throw new Error('not_json')
@@ -157,7 +169,7 @@ async function rewordWithModel({ question, draft, facts, apiKey, model, fetchFn 
 
 // ---------- public API ----------
 
-export async function ask(userId, { question, eventId }, { now = new Date(), fetchFn = (...a) => globalThis.fetch(...a), apiKey = env.ANTHROPIC_API_KEY, model = env.ASSISTANT_MODEL, secret = env.JWT_SECRET } = {}) {
+export async function ask(userId, { question, eventId }, { now = new Date(), fetchFn = (...a) => globalThis.fetch(...a), apiKey = env.OPENROUTER_API_KEY, model = env.ASSISTANT_MODEL, secret = env.JWT_SECRET } = {}) {
   const cleaned = sanitizeText(question, 300)
   const intent = classify(cleaned)
   if (!intent) {

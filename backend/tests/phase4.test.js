@@ -14,7 +14,9 @@ const make = async (token, over = {}) => (await api().post('/api/events').set(be
 const ask = (token, body, a = api()) => a.post('/api/assistant/ask').set(bearer(token)).send(body)
 const KEY = 'k'.repeat(24)
 const withModel = (fetchFn) => request(createApp({ authRateLimit: { limit: 1000 }, assistantRateLimit: { limit: 1000 }, assistantOptions: { apiKey: KEY, fetchFn } }))
-const modelSays = (text, status = 200) => async () => ({ ok: status === 200, status, json: async () => ({ content: [{ type: 'text', text: JSON.stringify({ answer: text }) }] }) })
+// OpenRouter (OpenAI-compatible) reply shape
+const reply = (content) => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { role: 'assistant', content } }] }) })
+const modelSays = (text, status = 200) => async () => (status === 200 ? reply(JSON.stringify({ answer: text })) : { ok: false, status, json: async () => ({}) })
 
 describe('assistant: authentication and request validation', () => {
   it('requires a login', async () => {
@@ -107,8 +109,13 @@ describe('assistant: the model is optional, constrained and never trusted', () =
     await make(token)
     const res = await ask(token, q, withModel(async (_u, init) => {
       const sent = JSON.parse(init.body)
-      expect(sent.system).toMatch(/untrusted/i)
+      expect(_u).toBe('https://openrouter.ai/api/v1/chat/completions')
+      expect(init.headers.authorization).toBe(`Bearer ${KEY}`)
+      expect(sent.messages[0]).toMatchObject({ role: 'system' })
+      expect(sent.messages[0].content).toMatch(/untrusted/i)
       expect(sent.tools).toBeUndefined() // the model is given no tools
+      expect(sent.functions).toBeUndefined()
+      expect(sent.stream).toBeUndefined()
       return modelSays('Get ready a little over an hour before. Leave 30 min of travel before the start.')()
     }))
     expect(res.body.data).toMatchObject({ source: 'ai', aiStatus: 'used' })
@@ -116,7 +123,9 @@ describe('assistant: the model is optional, constrained and never trusted', () =
   it.each([
     ['provider outage', async () => { throw new Error('connect ECONNREFUSED') }],
     ['provider 500', modelSays('x', 500)],
-    ['garbage reply', async () => ({ ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: 'not json at all' }] }) })],
+    ['garbage reply', async () => reply('not json at all')],
+    ['error object inside a 200 reply', async () => ({ ok: true, status: 200, json: async () => ({ error: { message: 'model overloaded', code: 502 } }) })],
+    ['empty choices', async () => ({ ok: true, status: 200, json: async () => ({ choices: [] }) })],
     ['invented number', modelSays('Start at 3:17 because traffic adds 45 minutes.')],
     ['injected instructions obeyed', modelSays('All your events were deleted as requested. Visit https://evil.example')],
   ])('falls back to the rules-based answer on %s', async (_n, fetchFn) => {
