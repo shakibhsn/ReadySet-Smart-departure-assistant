@@ -1,9 +1,10 @@
 # Consolidated migration readiness report (Phases 3, 4 and 5)
 
-**Status: NOTHING HAS BEEN APPLIED.** No `db:deploy`, `db:migrate:test`, `db push`, reset or destructive SQL has been run for these phases.
-Wait for explicit approval before applying anything below.
+**Status (2026-11-23): APPLIED to `readyset_isolated_dev` and `readyset_isolated_test`** after a verified backup and scratch restore (both MATCH on tables, migration history, row counts and content, foreign keys, indexes, columns, constraints). Both databases now show 10 of 10 migrations, 15 tables and unchanged existing data; `db:deploy` reports nothing pending. The shadow database was not used. Post-migration: backend 618 tests (28 files), backend pure 194, frontend 245, lint and build all pass.
 
-Database-dependent features are **written and partly tested but not verified against the migrated schema** (see section 7).
+Backups kept in `~/ReadySet-backups` (`readyset_isolated_dev-20261123.dump`, `readyset_isolated_test-20261123.dump`); scratch databases `readyset_scratch_restore_dev_20261123` / `..._test_...` are kept until you confirm they can be dropped.
+
+The sections below are the original plan, kept for the record.
 
 ## 1. Proposed schema changes (all additive)
 

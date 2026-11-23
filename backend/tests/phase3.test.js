@@ -143,7 +143,7 @@ describe('profile: suggestions, overrides, disable, delete', () => {
     prisma.preparationLog.createMany({
       data: Array.from({ length: n }, (_, i) => {
         const dep = new Date(Date.now() - (i + 1) * 86_400_000)
-        return { userId, eventId: null, occurrenceStart: new Date(dep.getTime() + 40 * 60_000 + i * 1000), category, plannedPrepMinutes: 30, plannedDepartureAt: dep, prepStartedAt: new Date(dep.getTime() - prep * 60_000), readyAt: new Date(dep.getTime() - 5 * 60_000), leftAt: new Date(dep.getTime() + lateBy * 60_000) }
+        return { userId, eventId: null, occurrenceStart: new Date(dep.getTime() + 40 * 60_000 + i * 1000), category, plannedPrepMinutes: 30, plannedDepartureAt: dep, prepStartedAt: new Date(dep.getTime() - (prep + 5) * 60_000), readyAt: new Date(dep.getTime() - 5 * 60_000), leftAt: new Date(dep.getTime() + lateBy * 60_000) }
       }),
     })
 
@@ -214,9 +214,11 @@ describe('profile: suggestions, overrides, disable, delete', () => {
     const logs = (await api().get('/api/prep-profile/logs').set(bearer(token))).body.data.logs
     expect(logs).toHaveLength(4)
     expect((await api().delete(`/api/prep-profile/logs/${logs[0].id}`).set(bearer(token))).status).toBe(200)
-    expect((await profile(token)).preparation.overall).toMatchObject({ status: 'insufficient_data', samples: 3 }).constructor
+    expect((await profile(token)).preparation.overall).toMatchObject({ status: 'ok', samples: 3 }) // 3 is the minimum, still enough
+    expect((await api().delete(`/api/prep-profile/logs/${logs[1].id}`).set(bearer(token))).status).toBe(200)
+    expect((await profile(token)).preparation.overall).toMatchObject({ status: 'insufficient_data', samples: 2 }) // below the minimum: no suggestion
     const erased = await api().delete('/api/prep-profile/data').set(bearer(token))
-    expect(erased.body.data.deleted).toBe(3)
+    expect(erased.body.data.deleted).toBe(2)
     expect(await prisma.preparationLog.count({ where: { userId: user.id } })).toBe(0)
   })
 

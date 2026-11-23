@@ -26,9 +26,8 @@ export function applyAction(log, action, now) {
   const l = log ?? {}
   switch (action) {
     case 'start':
+      if (l.prepStartedAt && !l.cancelledAt) return { changed: false, patch: {} } // already started (even if finished or left): a repeated tap is a harmless no-op
       if (l.leftAt) return { error: 'You already left, so preparation cannot be started now.' }
-      if (l.readyAt) return { changed: false, patch: {} } // already finished: repeat tap
-      if (l.prepStartedAt && !l.cancelledAt) return { changed: false, patch: {} } // already started: repeat tap
       return { changed: true, patch: { prepStartedAt: now, cancelledAt: null } } // first start, or a restart after cancel
     case 'ready':
       if (l.readyAt) return { changed: false, patch: {} }
