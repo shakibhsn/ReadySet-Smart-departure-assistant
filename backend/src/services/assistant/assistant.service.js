@@ -26,8 +26,8 @@ export const SUPPORTED_HELP = [
   'Do I have any schedule conflicts tomorrow?',
   'Am I likely to be late for my next event?',
 ]
-const MODEL_TIMEOUT_MS = 8000
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
+const MODEL_TIMEOUT_MS = 15000
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/responses'
 const UNCERTAINTY = 'Times come from the values saved on your events. Live traffic is not available, so real travel can take longer.'
 
 const safe = async (fn) => {
@@ -141,26 +141,28 @@ const SYSTEM_PROMPT = [
 ].join(' ')
 
 async function rewordWithModel({ question, draft, facts, apiKey, model, fetchFn }) {
-  // OpenRouter's OpenAI-compatible chat endpoint. No tools, no functions, no streaming: plain text in, plain text out.
+  // OpenRouter Responses API (the same call as `openRouter.responses.send` in the official SDK, made with fetch so there is
+  // no extra dependency). No tools, no streaming: plain text in, plain text out.
   const response = await fetchFn(OPENROUTER_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}`, 'HTTP-Referer': env.APP_BASE_URL ?? env.FRONTEND_URL, 'X-Title': 'ReadySet' },
     body: JSON.stringify({
       model,
-      max_tokens: 400,
-      temperature: 0.2,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: JSON.stringify({ question: sanitizeText(question, 300), draft, facts }) },
-      ],
+      instructions: SYSTEM_PROMPT,
+      input: JSON.stringify({ question: sanitizeText(question, 300), draft, facts }),
+      max_output_tokens: 1200, // room for models that "think" before answering; the reply itself is capped by the prompt
+      stream: false,
     }),
     signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
   })
   if (!response.ok) throw new Error(`provider_${response.status}`)
   const body = await response.json()
-  if (body?.error) throw new Error('provider_error') // OpenRouter can report a model failure inside a 200 reply
-  const raw = body?.choices?.[0]?.message?.content
-  const text = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw.map((p) => p?.text ?? '').join('') : ''
+  if (body?.error || body?.status === 'failed') throw new Error('provider_error') // a model failure can arrive inside a 200 reply
+  // Same extraction as the SDK sample: the LAST item of type "message", its text parts joined.
+  const message = (Array.isArray(body?.output) ? [...body.output].reverse() : []).find((item) => item?.type === 'message')
+  const parts = Array.isArray(message?.content) ? message.content : []
+  const joined = parts.map((p) => (typeof p === 'string' ? p : p?.text ?? '')).join('')
+  const text = joined || (typeof body?.output_text === 'string' ? body.output_text : '')
   const start = text.indexOf('{')
   const end = text.lastIndexOf('}')
   if (start < 0 || end <= start) throw new Error('not_json')

@@ -47,9 +47,9 @@ const schema = z.object({
   EMAIL_REMINDERS_ENABLED: blank(flag),
 
   // ---- AI Departure Assistant (optional: without a key the assistant answers from rules, never from a model) ----
-  // OpenRouter (https://openrouter.ai): one key, many models. ASSISTANT_MODEL is an OpenRouter model id such as openai/gpt-4o-mini.
+  // OpenRouter (https://openrouter.ai): one key, many models. ASSISTANT_MODEL is an OpenRouter model id such as openai/gpt-5.2.
   OPENROUTER_API_KEY: blank(z.string().min(10).optional()),
-  ASSISTANT_MODEL: blank(z.string().min(3).max(100).regex(/^[A-Za-z0-9._:/-]+$/, 'must be an OpenRouter model id such as openai/gpt-4o-mini').default('openai/gpt-4o-mini')),
+  ASSISTANT_MODEL: blank(z.string().min(3).max(100).regex(/^[A-Za-z0-9._:/-]+$/, 'must be an OpenRouter model id such as openai/gpt-5.2').default('openai/gpt-5.2')),
 })
 
 /** Name of the database inside a postgres URL (never log the rest of the URL: it has the password). */

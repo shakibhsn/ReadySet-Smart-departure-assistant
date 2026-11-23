@@ -14,8 +14,8 @@ const make = async (token, over = {}) => (await api().post('/api/events').set(be
 const ask = (token, body, a = api()) => a.post('/api/assistant/ask').set(bearer(token)).send(body)
 const KEY = 'k'.repeat(24)
 const withModel = (fetchFn) => request(createApp({ authRateLimit: { limit: 1000 }, assistantRateLimit: { limit: 1000 }, assistantOptions: { apiKey: KEY, fetchFn } }))
-// OpenRouter (OpenAI-compatible) reply shape
-const reply = (content) => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { role: 'assistant', content } }] }) })
+// OpenRouter Responses API reply shape: output items, the last "message" item holds the text (reasoning items may come first)
+const reply = (content) => ({ ok: true, status: 200, json: async () => ({ output: [{ type: 'reasoning', summary: [] }, { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: content }] }] }) })
 const modelSays = (text, status = 200) => async () => (status === 200 ? reply(JSON.stringify({ answer: text })) : { ok: false, status, json: async () => ({}) })
 
 describe('assistant: authentication and request validation', () => {
@@ -109,13 +109,13 @@ describe('assistant: the model is optional, constrained and never trusted', () =
     await make(token)
     const res = await ask(token, q, withModel(async (_u, init) => {
       const sent = JSON.parse(init.body)
-      expect(_u).toBe('https://openrouter.ai/api/v1/chat/completions')
+      expect(_u).toBe('https://openrouter.ai/api/v1/responses')
       expect(init.headers.authorization).toBe(`Bearer ${KEY}`)
-      expect(sent.messages[0]).toMatchObject({ role: 'system' })
-      expect(sent.messages[0].content).toMatch(/untrusted/i)
+      expect(sent).toMatchObject({ model: 'openai/gpt-5.2', stream: false })
+      expect(sent.instructions).toMatch(/untrusted/i)
+      expect(JSON.parse(sent.input)).toHaveProperty('draft')
       expect(sent.tools).toBeUndefined() // the model is given no tools
       expect(sent.functions).toBeUndefined()
-      expect(sent.stream).toBeUndefined()
       return modelSays('Get ready a little over an hour before. Leave 30 min of travel before the start.')()
     }))
     expect(res.body.data).toMatchObject({ source: 'ai', aiStatus: 'used' })
@@ -125,7 +125,8 @@ describe('assistant: the model is optional, constrained and never trusted', () =
     ['provider 500', modelSays('x', 500)],
     ['garbage reply', async () => reply('not json at all')],
     ['error object inside a 200 reply', async () => ({ ok: true, status: 200, json: async () => ({ error: { message: 'model overloaded', code: 502 } }) })],
-    ['empty choices', async () => ({ ok: true, status: 200, json: async () => ({ choices: [] }) })],
+    ['no message item', async () => ({ ok: true, status: 200, json: async () => ({ output: [{ type: 'reasoning', summary: [] }] }) })],
+    ['failed status inside a 200 reply', async () => ({ ok: true, status: 200, json: async () => ({ status: 'failed', output: [] }) })],
     ['invented number', modelSays('Start at 3:17 because traffic adds 45 minutes.')],
     ['injected instructions obeyed', modelSays('All your events were deleted as requested. Visit https://evil.example')],
   ])('falls back to the rules-based answer on %s', async (_n, fetchFn) => {
