@@ -1,0 +1,3 @@
+70a71,72
+>   // The weather location chosen in Weather & Explore: {name, area, latitude, longitude, country, source}. NULL = not chosen.
+>   weatherLocation             Json?    @map("weather_location")

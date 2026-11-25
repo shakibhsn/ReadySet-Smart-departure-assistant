@@ -167,10 +167,10 @@ export function LocationSearch({ selected, onSelect, onClear }) {
           {geo.busy ? <Loader2 className="size-4 animate-spin" /> : <LocateFixed className="size-4" />} Use my current location
         </Button>
         {selected && (
-          <span className="inline-flex min-w-0 items-center gap-2 rounded-full bg-brand-50 py-1 pl-3 pr-1 text-sm text-brand-800">
+          <span className="inline-flex min-w-0 items-center gap-2 rounded-full bg-brand-50 py-0.5 pl-3 pr-0.5 text-sm text-brand-800">
             <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate font-semibold">{selected.name}</span>
-            <button type="button" onClick={onClear} aria-label="Clear selected location" className="flex size-6 cursor-pointer items-center justify-center rounded-full hover:bg-brand-100">
+            <button type="button" onClick={onClear} aria-label="Clear selected location" className="flex size-8 cursor-pointer items-center justify-center rounded-full hover:bg-brand-100">
               <X className="size-3.5" />
             </button>
           </span>

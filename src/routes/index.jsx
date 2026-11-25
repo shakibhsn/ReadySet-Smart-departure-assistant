@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from '@/layouts/AppLayout'
 import { ProtectedRoute, PublicOnlyRoute } from '@/components/common/RouteGuards'
@@ -18,11 +19,14 @@ import PrepProfilePage from '@/pages/profile/PrepProfilePage'
 import PlacesPage from '@/pages/places/PlacesPage'
 import PlannerPage from '@/pages/planner/PlannerPage'
 import NotificationsPage from '@/pages/notifications/NotificationsPage'
-import ExplorePage from '@/pages/explore/ExplorePage'
+import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 import WeekPage from '@/pages/week/WeekPage'
 import AnalyticsPage from '@/pages/analytics/AnalyticsPage'
 import AssistantPage from '@/pages/assistant/AssistantPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
+
+// Weather & Explore carries Leaflet (about 150 kB): it is loaded only when the page is opened.
+const ExplorePage = lazy(() => import('@/pages/explore/ExplorePage'))
 
 export default function AppRoutes() {
   return (
@@ -49,7 +53,7 @@ export default function AppRoutes() {
           <Route path="places" element={<PlacesPage />} />
           <Route path="profile" element={<PrepProfilePage />} />
           <Route path="week" element={<WeekPage />} />
-          <Route path="explore" element={<ExplorePage />} />
+          <Route path="explore" element={<Suspense fallback={<LoadingSkeleton />}><ExplorePage /></Suspense>} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="assistant" element={<AssistantPage />} />
           <Route path="notifications" element={<NotificationsPage />} />

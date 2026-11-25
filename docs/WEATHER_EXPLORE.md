@@ -7,7 +7,13 @@ Adds a weather dashboard, location search for Bangladesh, a location preference,
 - **Location search**: debounced search through the Open-Meteo Geocoding API, Bangladesh by default (or "Anywhere"). Results show name, type (division, district, upazila…), and the administrative area so same-named places can be told apart. No Nominatim.
 - **Location preference**: choose, change, clear; "Use my current location" asks the browser only when clicked and falls back to manual search if refused.
 - **Explore Destinations**: cafes, restaurants, parks, attractions, museums, shopping, nature, useful places from OpenStreetMap (Overpass). Category filters, distance filter, cards (name, category, distance, address when present), details, Leaflet map, "Save to my places", "Plan a departure here" (pre-fills the new-event destination).
+- **Dashboard** (kept short): a compact weather card with the next hours, a **weather-aware departure reminder** (the forecast for the hour of your next planned departure, shown only when the forecast covers that hour), quick links into Explore by category, and your saved places (top four).
 - **Weather-aware hints** (rule-based, no AI): rain likely → consider indoor; severe weather → advisory; pleasant → outdoor places may suit; no forecast → no weather claims. Can use the forecast for the user's next planned departure. Wording is cautious ("may suit"), never "safe" or "guaranteed".
+
+## Loading and resilience
+- The Explore page is **lazy-loaded** (its own chunk, 168 kB / 50 kB gzip, holds Leaflet and its CSS): the dashboard does not download it.
+- The map shows the chosen location immediately, **even when nearby places fail to load** (the error and "Try again" appear above it).
+- `OVERPASS_URL` accepts several servers; each gets 12 s, then the next is tried.
 
 ## Files
 Backend (new): `backend/src/services/explore/` (`providerHttp.js`, `locationHelpers.js`, `locationSearch.service.js`, `forecastHelpers.js`, `forecast.service.js`, `nearbyHelpers.js`, `nearby.service.js`), `backend/src/schemas/explore.schema.js`, `backend/src/routes/explore.routes.js`, tests `explorePure.test.js`, `explore.test.js`.

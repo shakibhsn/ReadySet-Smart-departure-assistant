@@ -34,6 +34,7 @@ export function toItem(occ) {
     end: new Date(occ.at.getTime() + duration * MIN),
     assumedDuration: e.durationMinutes == null,
     destination: e.destination ?? null,
+    priority: e.priority ?? 'normal', // low | normal | high: only used to order conflicts, never to hide one
     travel: e.travelDurationMinutes,
     prep: e.preparationMinutes,
     buffer: e.arrivalBufferMinutes,
@@ -42,7 +43,7 @@ export function toItem(occ) {
   }
 }
 
-const brief = (i) => ({ eventId: i.eventId, title: i.title, startAt: i.start.toISOString(), endAt: i.end.toISOString(), assumedDuration: i.assumedDuration, destination: i.destination })
+const brief = (i) => ({ eventId: i.eventId, title: i.title, startAt: i.start.toISOString(), endAt: i.end.toISOString(), assumedDuration: i.assumedDuration, destination: i.destination, priority: i.priority ?? 'normal' })
 const span = (i) => `${clock(i.start, i.zone)}–${clock(i.end, i.zone)}`
 
 /** Earliest start for B (rounded up to 5 minutes) that would resolve the conflict with A. */
@@ -100,7 +101,9 @@ export function detectConflicts(items) {
   }
 
   const rank = { high: 0, medium: 1 }
-  return out.sort((x, y) => rank[x.severity] - rank[y.severity] || x.events[0].startAt.localeCompare(y.events[0].startAt))
+  // Within the same severity, a conflict that involves a HIGH-priority event is listed first; then by time as before.
+  const involvesHigh = (c) => (c.events.some((e) => e.priority === 'high') ? 0 : 1)
+  return out.sort((x, y) => rank[x.severity] - rank[y.severity] || involvesHigh(x) - involvesHigh(y) || x.events[0].startAt.localeCompare(y.events[0].startAt))
 }
 
 export const ASSUMPTIONS = [

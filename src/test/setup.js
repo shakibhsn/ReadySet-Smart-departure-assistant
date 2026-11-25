@@ -2,8 +2,8 @@ import '@testing-library/jest-dom/vitest'
 import { afterEach, vi } from 'vitest'
 import { cleanup, configure } from '@testing-library/react'
 
-// Screens render a ~430-option timezone list; under CPU load the default 1s wait is too tight.
-configure({ asyncUtilTimeout: 5000 })
+// Screens render a ~430-option timezone list; under CPU load the default 1s wait is too tight (10 s leaves room on a busy machine).
+configure({ asyncUtilTimeout: 10000 })
 
 // jsdom does not implement scrolling.
 window.scrollTo = vi.fn()

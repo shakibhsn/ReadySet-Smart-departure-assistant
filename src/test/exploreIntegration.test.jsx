@@ -55,6 +55,13 @@ describe('Weather & Explore inside the app', () => {
     expect(api.calls.find((c) => c.path === '/weather/forecast').params.get('latitude')).toBe('23.85')
   })
 
+  it('the dashboard has the explore shortcuts and the saved-places section (existing feature)', async () => {
+    renderApp('/')
+    expect(await screen.findByRole('list', { name: 'Explore by category' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Museums' })).toHaveAttribute('href', '/explore?category=museum')
+    expect(await screen.findByText(/No saved places yet/)).toBeInTheDocument()
+  })
+
   it("another user's saved location is not shown to this user", async () => {
     saveLocation('someone-else', savar)
     const api = renderApp('/')

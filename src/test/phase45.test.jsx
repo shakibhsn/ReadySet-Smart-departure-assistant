@@ -177,6 +177,19 @@ describe('analytics page', () => {
     expect(screen.getByText(/Not enough data yet \(1 of 3\)/)).toBeInTheDocument() // left on time
   })
 
+  it('shows how many checklist items were ticked in the chosen period (when the server can tell)', async () => {
+    getAnalytics.mockResolvedValue(data({ checklist: { rate: { status: 'ok', percent: 80, count: 4, of: 5 }, totalItems: 5, doneItems: 4, completedInRange: 3 } }))
+    shell(<AnalyticsPage />)
+    expect(await screen.findByText('4 of 5 items · 3 ticked in this period')).toBeInTheDocument()
+  })
+
+  it('does not mention ticked-in-period when it is not available (older data has no completion time)', async () => {
+    getAnalytics.mockResolvedValue(data({ checklist: { rate: { status: 'ok', percent: 80, count: 4, of: 5 }, totalItems: 5, doneItems: 4, completedInRange: null } }))
+    shell(<AnalyticsPage />)
+    expect(await screen.findByText('4 of 5 items')).toBeInTheDocument()
+    expect(screen.queryByText(/ticked in this period/)).not.toBeInTheDocument()
+  })
+
   it('a brand-new user gets an empty state that explains how to start', async () => {
     getAnalytics.mockResolvedValue(data({ hasEvents: false }))
     shell(<AnalyticsPage />)

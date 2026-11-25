@@ -6,7 +6,6 @@ import { SegmentedControl } from '@/components/common/SegmentedControl'
 import { WeatherIcon } from '@/components/weather/WeatherIcon'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useForecast } from '@/hooks/useForecast'
 import { formatTemp, loadUnit, saveUnit } from '@/lib/weatherLocation'
 import { formatDayLabel, formatRelative, formatTime12 } from '@/utils/format'
 
@@ -166,8 +165,3 @@ export function LocationWeatherCard({ location, query, compact = false }) {
   )
 }
 
-/** The card with its own forecast request (dashboard). */
-export function ConnectedWeatherCard({ location, compact }) {
-  const query = useForecast(location)
-  return <LocationWeatherCard location={location} query={query} compact={compact} />
-}

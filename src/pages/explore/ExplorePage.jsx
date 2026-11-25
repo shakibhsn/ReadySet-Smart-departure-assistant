@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom'
 import { MapPinned } from 'lucide-react'
 import { EmptyState } from '@/components/common/EmptyState'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -8,10 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useForecast } from '@/hooks/useForecast'
 import { useRemoteData } from '@/hooks/useRemoteData'
 import { useWeatherLocation } from '@/hooks/useWeatherLocation'
+import { EXPLORE_CATEGORIES } from '@/lib/exploreRules'
 import { getUpcomingPlans } from '@/services/departureApi'
 
 export default function ExplorePage() {
   const { location, setLocation, clear } = useWeatherLocation()
+  const [params] = useSearchParams()
+  const wanted = params.get('category') // e.g. from the dashboard's quick links; anything unknown is ignored
+  const initialCategory = EXPLORE_CATEGORIES.some((c) => c.value === wanted) ? wanted : 'all'
   const forecast = useForecast(location)
   // The user's next planned departure (existing departure engine), so suggestions can use the forecast for THAT time.
   const next = useRemoteData(() => getUpcomingPlans({ days: 7, limit: 1 }), [])
@@ -39,7 +44,7 @@ export default function ExplorePage() {
       ) : (
         <>
           <LocationWeatherCard location={location} query={forecast} />
-          <ExploreDestinations key={`${location.latitude},${location.longitude}`} location={location} forecast={forecast.data} departure={departure} />
+          <ExploreDestinations key={`${location.latitude},${location.longitude}`} initialCategory={initialCategory} location={location} forecast={forecast.data} departure={departure} />
         </>
       )}
     </div>

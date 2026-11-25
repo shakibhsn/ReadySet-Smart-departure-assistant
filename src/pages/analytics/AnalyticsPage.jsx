@@ -86,7 +86,7 @@ export default function AnalyticsPage() {
             {data.preparationTracking === 'available' && <Metric label="Preparations completed" metric={data.preparation?.completion} format={(m) => `${m.percent}%`} hint={data.preparation?.completion?.status === 'ok' ? `${data.preparation.completion.count} of ${data.preparation.completion.of} past events` : 'Past events with a completed log'} />}
             {data.preparationTracking === 'available' && <Metric label="Left on time" metric={data.departure?.onTime} format={(m) => `${m.percent}%`} hint={`Within ${data.departure?.graceMinutes ?? 5} min of plan`} />}
             {data.preparationTracking === 'available' && <Metric label="Average preparation" metric={data.preparation?.average} format={(m) => `${m.minutes} min`} hint="From logged sessions" />}
-            <Metric label="Checklist completion" metric={data.checklist.rate} format={(m) => `${m.percent}%`} hint={`${data.checklist.doneItems} of ${data.checklist.totalItems} items`} />
+            <Metric label="Checklist completion" metric={data.checklist.rate} format={(m) => `${m.percent}%`} hint={`${data.checklist.doneItems} of ${data.checklist.totalItems} items${data.checklist.completedInRange === null || data.checklist.completedInRange === undefined ? '' : ` · ${data.checklist.completedInRange} ticked in this period`}`} />
           </div>
           {data.preparationTracking === 'unavailable' && <Alert>Preparation tracking is not available yet, so the preparation and departure figures are hidden rather than shown as zero.</Alert>}
 

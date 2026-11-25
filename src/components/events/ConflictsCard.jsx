@@ -1,3 +1,4 @@
+import { PriorityBadge } from '@/components/common/PriorityBadge'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, CheckCircle2, Lightbulb, TriangleAlert } from 'lucide-react'
 import { Alert } from '@/components/common/Alert'
@@ -59,6 +60,7 @@ export function ConflictsCard({ days = 14, compact = false }) {
                       <span key={e.eventId + e.startAt}>
                         {i > 0 && ' · '}
                         <Link to={`/events/${e.eventId}`} className="font-semibold text-brand-700 hover:underline">{e.title}</Link>
+                        {e.priority === 'high' && <> <PriorityBadge priority="high" /></>}
                         {e.assumedDuration && ' (duration assumed)'}
                       </span>
                     ))}

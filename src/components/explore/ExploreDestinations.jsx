@@ -75,8 +75,8 @@ function Details({ place, hour, whenLabel, locationName, onClose }) {
  * and actions. `forecast` is the reply for the same location (or null); `departure` is { at, title } of the user's
  * next planned departure (or null). Without a forecast value for a time, no weather claim is made.
  */
-export function ExploreDestinations({ location, forecast, departure }) {
-  const [category, setCategory] = useState('all')
+export function ExploreDestinations({ location, forecast, departure, initialCategory = 'all' }) {
+  const [category, setCategory] = useState(initialCategory)
   const [radius, setRadius] = useState(2500)
   const [when, setWhen] = useState('now')
   const [selectedId, setSelectedId] = useState(null)
@@ -86,6 +86,8 @@ export function ExploreDestinations({ location, forecast, departure }) {
     [location.latitude, location.longitude, radius, category],
   )
   const ok = nearby.data?.status === 'ok'
+  const failed = Boolean(nearby.error || (nearby.data && !ok))
+  const initialLoading = nearby.loading && !nearby.data // the map shows at once; only the list waits
   const places = filterByCategory(ok ? nearby.data.places : [], category)
   const selected = places.find((p) => p.id === selectedId) ?? null
 
@@ -144,20 +146,21 @@ export function ExploreDestinations({ location, forecast, departure }) {
           !hour && <p className="text-xs text-muted">Weather-based suggestions are not shown because the forecast is not available{useDeparture ? ' for that time' : ''}.</p>
         )}
 
-        {nearby.loading && !nearby.data ? (
-          <div role="status" aria-label="Loading destinations" className="space-y-3">
-            <Skeleton className="h-72" />
-            <Skeleton className="h-16" />
-          </div>
-        ) : nearby.error || (nearby.data && !ok) ? (
-          <Alert>
-            {nearby.data?.message ?? nearby.error?.message ?? 'Nearby places are unavailable right now.'}{' '}
-            <button type="button" onClick={nearby.reload} className="font-bold underline">Try again</button>
-          </Alert>
-        ) : (
-          <>
+        <>
+            {failed && (
+              <Alert>
+                {nearby.data?.message ?? nearby.error?.message ?? 'Nearby places are unavailable right now.'}{' '}
+                <button type="button" onClick={nearby.reload} className="font-bold underline">Try again</button>
+              </Alert>
+            )}
+            {/* The map always shows the chosen location, even when the places could not be loaded. */}
             <ExploreMap center={{ latitude: location.latitude, longitude: location.longitude, name: location.name }} places={places} selectedId={selected?.id ?? null} onSelect={select} />
-            {places.length === 0 ? (
+            {initialLoading ? (
+              <div role="status" aria-label="Loading destinations" className="space-y-2">
+                <Skeleton className="h-16" />
+                <Skeleton className="h-16" />
+              </div>
+            ) : failed ? null : places.length === 0 ? (
               <EmptyState icon={MapPinOff} title="No places found here" description="OpenStreetMap has no named places for this filter within the chosen distance. Try a larger distance or another category." className="py-8" />
             ) : (
               <>
@@ -170,9 +173,8 @@ export function ExploreDestinations({ location, forecast, departure }) {
               </>
             )}
             {selected && <Details place={selected} hour={hour} whenLabel={whenLabel} locationName={location.name} onClose={() => setSelectedId(null)} />}
-            <p className="text-xs text-muted">Place data © OpenStreetMap contributors (ODbL). Opening hours, ratings and prices are not shown because they are not provided here.</p>
-          </>
-        )}
+            {!failed && !initialLoading && <p className="text-xs text-muted">Place data © OpenStreetMap contributors (ODbL). Opening hours, ratings and prices are not shown because they are not provided here.</p>}
+        </>
       </CardContent>
     </Card>
   )

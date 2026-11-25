@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Clock, MapPin, Pencil, Repeat, Trash2 } from 'lucide-react'
 import { CategoryBadge } from '@/components/common/CategoryBadge'
+import { PriorityBadge } from '@/components/common/PriorityBadge'
 import { getCategory } from '@/data/categories'
 import { formatDayLabel, formatDuration, formatTime12 } from '@/utils/format'
 import { cn } from '@/lib/utils'
@@ -52,8 +53,9 @@ export function EventCard({ event, showDay = false, onDelete, className }) {
           )}
           <span>{formatDuration(event.travelMinutes)} travel</span>
         </div>
-        <div className="mt-2.5">
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
           <CategoryBadge category={event.category} />
+          <PriorityBadge priority={event.priority} />
         </div>
       </div>
       {onDelete && (

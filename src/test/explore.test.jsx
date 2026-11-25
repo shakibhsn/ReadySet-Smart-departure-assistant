@@ -519,6 +519,8 @@ describe('explore destinations', () => {
     arrange()
     show()
     expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(screen.getByTestId('map')).toBeInTheDocument() // the map of the chosen location stays, even without places
+    expect(screen.queryByText('No places found here')).not.toBeInTheDocument() // a failure is not reported as "no places"
     getNearbyPlaces.mockResolvedValue(ok([cafe]))
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText('Sea View Cafe')).toBeInTheDocument()
@@ -559,6 +561,18 @@ describe('Weather & Explore page', () => {
     wrap(<ExplorePage />)
     expect(await screen.findByLabelText(/Current temperature/)).toBeInTheDocument()
     expect(getForecast).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens on the category chosen on the dashboard (?category=), and ignores unknown values', async () => {
+    saveLocation('user-a', here)
+    const { unmount } = render(<MemoryRouter initialEntries={['/explore?category=park']}><AuthContext.Provider value={{ user: { id: 'user-a' } }}><ExplorePage /></AuthContext.Provider></MemoryRouter>)
+    expect(await screen.findByRole('button', { name: 'Parks' })).toHaveAttribute('aria-pressed', 'true')
+    expect(getNearbyPlaces).toHaveBeenCalledWith(expect.objectContaining({ category: 'park' }))
+    unmount()
+    getNearbyPlaces.mockClear()
+    render(<MemoryRouter initialEntries={['/explore?category=casino']}><AuthContext.Provider value={{ user: { id: 'user-a' } }}><ExplorePage /></AuthContext.Provider></MemoryRouter>)
+    expect(await screen.findByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true')
+    expect(getNearbyPlaces).toHaveBeenCalledWith(expect.objectContaining({ category: 'all' }))
   })
 
   it('clearing the selection returns to the empty state', async () => {

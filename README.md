@@ -4,8 +4,7 @@
 
 ReadySet works backwards from an event to tell you when to start preparing and when to leave.
 
-**Status:** events (Day 3), a transactional **email system** (§10) and the **Smart Departure Engine** (§9: formulas, timezone-safe calculation, live status/countdown).
-Events live in PostgreSQL. Checklists, notifications and weather are still temporary/mock data (see §8).
+**Status:** all planned phases are implemented (see §13): events and recurrence, the Smart Departure Engine (§9), email (§10), database-backed checklists, packing and saved places, notifications with priority and snooze, an adaptive preparation profile, an optional AI departure assistant, a weekly planner with analytics, installable PWA with offline checklist, and **Weather & Explore** (location search for Bangladesh, forecast, nearby places, map). Everything is stored in PostgreSQL except two documented browser-side items (§13).
 
 ```
 frontend (repo root)   React 19 · Vite · Tailwind v4 · React Router · date-fns      http://localhost:5173
@@ -119,6 +118,7 @@ All responses: `{ success, message, data }` or `{ success: false, message, error
 ## 6. Testing
 - **Backend** (`npm run test:api`): registration (valid, missing fields, bad email, weak password, mismatch, duplicate, hashed storage), login (valid, wrong password, unknown email, missing fields, 429 rate limit), JWT (missing/invalid/`alg:none`/expired/valid/deleted user), profile & preference validation, and **user A vs user B isolation**. Tests only delete rows with `@readyset.test` emails and only in a `*_test` database.
   Day 3 adds `tests/events.test.js` (80 API tests on a real PostgreSQL: validation matrix, CRUD, pagination with stable order, category/date filters, upcoming, occurrences, recurrence rule storage/replace/remove, cascade deletes, and two-user isolation for read/update/delete/upcoming) and `tests/recurrence.test.js` (12 pure tests: daily, weekly, intervals, end dates, no duplicates, DST, timezone parsing).
+- **Current totals and how to run everything: [docs/TESTING.md](docs/TESTING.md).** Real-browser checks (PWA, offline, Weather & Explore): [e2e/README.md](e2e/README.md). The sections below describe the earliest suites in detail.
 - **Frontend** (`npm test`, 100 tests): auth forms, protected routes, session restore, logout, `events.test.jsx` (stateful fake API: create/edit/delete, filters, pagination, empty/error/expired states, per-user state) `departure.test.jsx` + `departureStatus.test.js` (Next Departure card with fake timers: countdown without network calls, local status advance with a single refetch, late/arrival/started warnings, hidden-tab pause and instant catch-up, Planner timeline, debounced what-if preview that saves nothing, loading/error/empty states, Event Details plan), and `email.test.jsx` (verification banner and Settings status/resend, login `EMAIL_NOT_VERIFIED` notice, mandatory-verification registration, forgot-password and reset-password forms incl. loading/success/expired/used/invalid states, verify and confirm-email-change links submitted exactly once, email-preference switches incl. revert on failure, change-email form).
   The email system adds `tests/email.test.js` (registration email, verification/resend/forgot/reset/email-change flows, expired/reused tokens, rate limits, backward compatibility for pre-existing users, mandatory mode, preferences authorization/isolation), `tests/emailService.test.js` (retry/backoff/idempotency, duplicate guard, Resend error mapping, console mode, startup config failures, template escaping) and `tests/reminders.test.js` (departure maths and reminder/plan parity, timing/grace/preferences rules, sweep with dedupe, event edits/deletes, recurrence). **All use a mock mailbox: automated tests can never send real email** (`EMAIL_MODE=provider` is refused under `NODE_ENV=test`). Day 4 adds `tests/departure.test.js` (30 pure calculator/status/validation tests: the required examples, midnight rollover, other timezones, daylight saving, every status boundary, fallbacks) and `tests/departureApi.test.js` (44 API tests: ownership/isolation, exact plans, statuses, recurrence without duplicates, preview side-effects, fallbacks, validation, sorting, route order). 288 backend tests in total.
 - **Known tooling flake (Windows):** the Vitest *worker process* sometimes dies with exit code `3221226505` (`0xC0000409`), at startup or mid-run, with no assertion failure. It only reproduced on database-backed tests, and it is **not** caused by the native `bcrypt` addon (swapping in pure-JS `bcryptjs` still crashed, 3 of 10 runs). The cause was not found. `backend/scripts/run-tests.mjs` runs each test **file** in its own Vitest process and re-runs only that file (max 3 attempts) when its worker crashed, prints a warning when it does, and never retries an actual test failure.
@@ -349,13 +349,31 @@ No bounce/complaint/delivery webhooks (so "delivered" is unknown); the email que
 - **Official fix = Prisma 7.10.1 (stable) is NOT a drop-in upgrade.** Tested on a scratch copy: it clears the audit, but `prisma validate` rejects the current schema (`datasource url` is no longer allowed; a `prisma.config.ts` and a driver adapter for `PrismaClient` are required). Treat it as a planned migration with CLI + Client upgraded together. `npm audit fix --force` would jump to a 8.0.0 release candidate and must not be used.
 - **Applied remediation:** Prisma stays at 6.19.3 (CLI, Client and schema unchanged) and `backend/package.json` now has `"overrides": { "deepmerge-ts": "^8.0.2" }`. `npm audit` reports **0 vulnerabilities**; `prisma validate`, `generate`, `migrate deploy` (both migrations, on a real PostgreSQL) and the full backend test suite all pass with it. Revisit when you migrate to Prisma 7 (the override can then be removed).
 
-## 12. Known limitations / next steps
-- **Next:** checklist persistence (checklists are still temporary client state). Departure plans use the saved travel time as a fixed estimate; live traffic, weather and maps are later milestones (see §9 limitations).
-- Checklists and notifications are still temporary client state; weather/maps/traffic and push notifications are not implemented.
-- Recurrence limits are listed in §8 (no monthly rules, no single-occurrence edits).
-- The Dashboard "Today" uses the user's saved timezone while the Schedule calendar uses the browser's calendar days; they only differ if the browser and saved timezone differ.
-- Avatar upload is a UI placeholder. Email verification, password reset and email change are implemented (§10).
+## 12. Known limitations
+- Departure plans use each event's saved travel time as a fixed estimate; **live traffic and routing are not used**.
+- Avatar upload is a UI placeholder.
 - No refresh tokens or per-device sessions: logout ends all sessions of the account (see §5). Rate limiting is in-memory per process; use a shared store when running multiple instances.
-- Reminder switches and theme are saved on the device only.
+- The Dashboard "Today" uses the user's saved timezone while the Schedule calendar uses the browser's calendar days; they only differ if the browser and saved timezone differ.
 - The Windows Vitest worker flake in §6 is worked around, not root-caused.
-- Dependency audit: see §11 (0 vulnerabilities with the override).
+- Dependency audit: see §11.
+- Feature-specific limitations: §13 and the linked documents (offline mode, AI assistant, Weather & Explore).
+
+## 13. Feature overview, configuration and documents
+| Area | What it does | Details |
+|---|---|---|
+| Recurrence, templates, conflicts | Daily/weekly/monthly/count-limited rules, per-occurrence skip/edit, templates, schedule conflict detector (a high-priority event's conflicts are listed first) | §8, tests `phase1*` |
+| Smart checklist, packing, saved places | Database-backed checklists, built-in and personal packing templates, "often forgotten" suggestions, saved places and a default start | tests `phase2*` |
+| Preparation profile | Explicit tap-to-log ("Start preparing", "I'm ready", "I left"); suggestions need at least 3 valid logs; overrides, switch-off and erase | tests `phase3*` |
+| Notifications | In-app reminders from the departure engine; priority (derived), snooze, history filters, optional browser alerts, single scheduler, no duplicates | tests `notification*`, `phase4*` |
+| AI departure assistant | Four fixed question types answered from your own data; an optional model (**OpenRouter**, `OPENROUTER_API_KEY`, `ASSISTANT_MODEL`) only rewords the answer; every change needs a confirmation | `backend/src/services/assistant/` |
+| Weekly planner, analytics | Week view with priority, conflicts and workload; analytics from real rows (a figure appears only with at least 3 data points) | `phase5*` |
+| PWA and offline | Installable; offline reading of saved events/checklists and checklist ticks that sync on reconnect (never API responses in shared caches); everything else needs a connection | `public/sw.js`, `src/lib/offline/` |
+| Weather & Explore | Location search (Open-Meteo geocoding, Bangladesh first), forecast, nearby places (OpenStreetMap via Overpass), Leaflet map, weather-aware hints | [docs/WEATHER_EXPLORE.md](docs/WEATHER_EXPLORE.md) |
+
+**Optional environment variables** (see the `.env.example` files; none are required): `OPENROUTER_API_KEY`, `ASSISTANT_MODEL` (assistant wording), `OVERPASS_URL` (nearby places; one URL or a comma-separated list), `VITE_MAP_TILE_URL` (map tiles). No secret ever belongs in a `VITE_*` variable.
+
+**Database migrations.** Ten migrations are applied to the development and test databases. The next proposed change, `user_preferences.weather_location` (server-side storage of the chosen weather location), is **prepared but not applied**: [docs/proposed/weather_location/](docs/proposed/weather_location/README.md). The history, backups and the procedure used are in [docs/MIGRATION_READINESS.md](docs/MIGRATION_READINESS.md). Always take and verify a backup first (`pg_dump` custom format, scratch restore, full comparison) and never run `migrate reset` or `db push`.
+
+**Still browser-side (not in the database yet):** the chosen weather location (per user, per browser), the temperature unit, the theme, and the offline copy of events and checklists.
+
+**Deploying.** Nothing is deployed by this repository. Serve over HTTPS, serve `index.html` for every route, serve `/sw.js` without a long cache lifetime, set `FRONTEND_URL` for CORS, and use your own Overpass server and a permitted tile service for real traffic.

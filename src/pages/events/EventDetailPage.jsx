@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CalendarClock, Compass, Globe, MapPin, Pencil, Repeat, Trash2 } from 'lucide-react'
 import { Alert } from '@/components/common/Alert'
 import { CategoryBadge } from '@/components/common/CategoryBadge'
+import { PriorityBadge } from '@/components/common/PriorityBadge'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { LoadingSkeleton } from '@/components/common/LoadingSkeleton'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -110,7 +111,10 @@ export default function EventDetailPage() {
 
       <Card>
         <CardContent className="space-y-6 pt-6 sm:pt-6">
-          <CategoryBadge category={event.category} />
+          <div className="flex flex-wrap items-center gap-2">
+            <CategoryBadge category={event.category} />
+            <PriorityBadge priority={event.priority} />
+          </div>
           <dl className="grid gap-5 sm:grid-cols-2">
             <Row icon={CalendarClock} label="When">
               {formatLongDate(event.localDate)} at {formatTime12(event.localTime)}
