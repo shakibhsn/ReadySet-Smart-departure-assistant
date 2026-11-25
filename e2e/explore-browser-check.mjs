@@ -131,7 +131,7 @@ try {
   if (placeCount > 0) check('LIVE nearby places returned from OpenStreetMap', true, `${placeCount} places`)
   else note('LIVE nearby places', `no places returned (${nearbyAlert || (nearbyDone ? 'empty result' : 'still loading after 60 s')}): the public Overpass servers are the likely cause`)
   await sleep(2500)
-  const leaflet = await evalJs(`(() => { const c = document.querySelector('.leaflet-container'); if (!c) return null; const tiles = [...c.querySelectorAll('img.leaflet-tile')]; return { tiles: tiles.length, loaded: tiles.filter((t) => t.classList.contains('leaflet-tile-loaded') && t.naturalWidth > 0).length, markers: c.querySelectorAll('.leaflet-marker-icon').length, zoom: !!c.querySelector('.leaflet-control-zoom'), attribution: c.querySelector('.leaflet-control-attribution')?.innerText ?? '', size: [c.clientWidth, c.clientHeight] } })()`)
+  const leaflet = await evalJs(`(() => { const c = [...document.querySelectorAll('.leaflet-container')].pop(); if (!c) return null; const tiles = [...c.querySelectorAll('img.leaflet-tile')]; return { tiles: tiles.length, loaded: tiles.filter((t) => t.classList.contains('leaflet-tile-loaded') && t.naturalWidth > 0).length, markers: c.querySelectorAll('.leaflet-marker-icon').length, zoom: !!c.querySelector('.leaflet-control-zoom'), attribution: c.querySelector('.leaflet-control-attribution')?.innerText ?? '', size: [c.clientWidth, c.clientHeight] } })()`)
   check('Leaflet map renders with the location marker, zoom controls and OSM attribution', Boolean(leaflet) && leaflet.markers >= 1 && leaflet.zoom && /OpenStreetMap/.test(leaflet.attribution) && leaflet.size[0] > 200 && leaflet.size[1] > 200, JSON.stringify(leaflet))
   check('map tiles actually load from OpenStreetMap in a real browser', Boolean(leaflet) && leaflet.loaded > 0, `${leaflet?.loaded}/${leaflet?.tiles} tiles loaded`)
   check('destination markers match the list', placeCount === 0 || (leaflet && leaflet.markers === placeCount + 1), `markers=${leaflet?.markers} places=${placeCount}`)
@@ -184,7 +184,7 @@ try {
     }
     if (mobile) {
       await goto(`${APP}/explore`, 3500)
-      const m = await evalJs(`(() => { const c = document.querySelector('.leaflet-container'); const r = c?.getBoundingClientRect(); return c ? { w: Math.round(r.width), h: Math.round(r.height), fits: r.right <= window.innerWidth + 1 } : null })()`)
+      const m = await evalJs(`(() => { const c = [...document.querySelectorAll('.leaflet-container')].pop(); const r = c?.getBoundingClientRect(); return c ? { w: Math.round(r.width), h: Math.round(r.height), fits: r.right <= window.innerWidth + 1 } : null })()`)
       check('map fits the phone screen', Boolean(m) && m.fits && m.w > 250, JSON.stringify(m))
       const small = await evalJs(`JSON.stringify([...document.querySelectorAll('button, a, [role=radio]')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.height < 28) && getComputedStyle(e).visibility !== 'hidden' }).map((e) => (e.getAttribute('aria-label') || e.textContent || e.className).trim().slice(0, 40) + ' ' + Math.round(e.getBoundingClientRect().height) + 'px'))`)
       note('small interactive elements on the phone layout (height < 28 px)', `${small}`)

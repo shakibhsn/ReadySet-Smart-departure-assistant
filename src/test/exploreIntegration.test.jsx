@@ -76,7 +76,7 @@ describe('Weather & Explore inside the app', () => {
         places: { status: 'ok', category: 'all', radiusMeters: 2500, places: [{ id: 'node/1', name: 'Sea View Cafe', category: 'cafe', categoryLabel: 'Cafes', latitude: 23.851, longitude: 90.261, distanceMeters: 300, address: null, locality: 'Savar', osmUrl: 'https://www.openstreetmap.org/node/1' }], attribution: 'x' },
       }),
     })
-    expect(await screen.findByText('Pick a location to begin')).toBeInTheDocument()
+    expect(await screen.findByText('Explore Bangladesh')).toBeInTheDocument()
     await userEvent.type(screen.getByRole('combobox'), 'Savar')
     await userEvent.click(await screen.findByRole('option'))
     expect(await screen.findByLabelText('Current temperature 31°C')).toBeInTheDocument()

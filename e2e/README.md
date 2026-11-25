@@ -7,6 +7,7 @@ against a **production build** of the frontend and an API running on the **test 
 | Script | Covers |
 |---|---|
 | `explore-browser-check.mjs` | Weather & Explore: lazy loading, location search (real Open-Meteo), weather card, units, **Leaflet map and OSM tiles**, destinations (real Overpass), details/save/plan links, dashboard sections, phone/tablet layout (no horizontal scroll), dark theme, contrast, current location (denied / granted) |
+| `bangladesh-map-browser-check.mjs` | Bangladesh map: 8 divisions + 64 district boundaries, map clicks, division/district/upazila navigation, lazy boundary files, no location request on load, "Use my location" (granted/denied), save/plan actions, load failure + retry, responsive, dark |
 | `pwa-offline-browser-check.mjs` | Manifest and installability, service worker, offline reload, offline checklist ticks, reconnect sync without duplicates, sync conflict, account switching and logout purge, responsive screenshots |
 
 ## Run (three terminals, from the repository root)
@@ -19,6 +20,7 @@ cd backend && PORT=4101 NODE_ENV=test FRONTEND_URL=http://localhost:4173 node sr
 # 3. the checks (the output folder receives screenshots and a results JSON file)
 mkdir -p /tmp/rs-shots
 node e2e/explore-browser-check.mjs /tmp/rs-shots
+node e2e/bangladesh-map-browser-check.mjs /tmp/rs-shots
 node e2e/pwa-offline-browser-check.mjs /tmp/rs-shots
 ```
 Optional arguments: `<apiBase> <appBase> <edgePath>`. Use another Chromium-based browser by passing its path.

@@ -1,7 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
-import { MapPinned } from 'lucide-react'
-import { EmptyState } from '@/components/common/EmptyState'
 import { PageHeader } from '@/components/common/PageHeader'
+import { BangladeshExplorer } from '@/components/explore/BangladeshExplorer'
 import { ExploreDestinations } from '@/components/explore/ExploreDestinations'
 import { LocationSearch } from '@/components/explore/LocationSearch'
 import { LocationWeatherCard } from '@/components/weather/LocationWeatherCard'
@@ -27,8 +26,11 @@ export default function ExplorePage() {
     <div className="space-y-6">
       <PageHeader title="Weather & Explore" description="Check the weather anywhere in Bangladesh and find places worth going to." />
 
+      {/* Browse the whole country on the map: division, district, upazila, then destinations. */}
+      <BangladeshExplorer departure={departure} />
+
       <div className="grid items-start gap-6 xl:grid-cols-12">
-        {/* Left: where you are and what the weather is like; right: the map and places to go */}
+        {/* Left: your saved weather location; right: places near it */}
         <div className="min-w-0 space-y-6 xl:col-span-4">
           <Card>
             <CardHeader>
@@ -44,11 +46,9 @@ export default function ExplorePage() {
           {location && <LocationWeatherCard location={location} query={forecast} />}
         </div>
 
-        <div className="min-w-0 xl:col-span-8">
-          {!location ? (
-            <EmptyState icon={MapPinned} title="Pick a location to begin" description="Search for your city, district or area, or share your current location, and ReadySet will show the weather and nearby places." className="py-16" />
-          ) : (
-            <ExploreDestinations key={`${location.latitude},${location.longitude}`} initialCategory={initialCategory} location={location} forecast={forecast.data} departure={departure} />
+        <div className="min-w-0 space-y-6 xl:col-span-8">
+          {location && (
+            <ExploreDestinations key={`${location.latitude},${location.longitude}`} initialCategory={initialCategory} location={location} forecast={forecast.data} departure={departure} description={`Places near your saved location, ${location.name}, from OpenStreetMap.`} />
           )}
         </div>
       </div>

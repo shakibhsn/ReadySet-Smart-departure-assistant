@@ -540,9 +540,9 @@ describe('Weather & Explore page', () => {
     searchLocations.mockResolvedValue({ status: 'ok', results: [{ id: '1', name: 'Savar', area: 'Dhaka, Dhaka Division, Bangladesh', type: 'Upazila seat', latitude: 23.85, longitude: 90.26, country: 'Bangladesh' }] })
   })
 
-  it('starts with a helpful empty state and makes no weather or places requests', () => {
+  it('starts with the Bangladesh explorer and makes no weather or places requests', () => {
     wrap(<ExplorePage />)
-    expect(screen.getByText('Pick a location to begin')).toBeInTheDocument()
+    expect(screen.getByText('Explore Bangladesh')).toBeInTheDocument() // the map-first explorer is always there; no location is needed
     expect(getForecast).not.toHaveBeenCalled()
     expect(getNearbyPlaces).not.toHaveBeenCalled()
   })
@@ -575,12 +575,12 @@ describe('Weather & Explore page', () => {
     expect(getNearbyPlaces).toHaveBeenCalledWith(expect.objectContaining({ category: 'all' }))
   })
 
-  it('clearing the selection returns to the empty state', async () => {
+  it('clearing the selection removes the weather and nearby places', async () => {
     saveLocation('user-a', here)
     wrap(<ExplorePage />)
     await screen.findByLabelText(/Current temperature/)
     await userEvent.click(screen.getByRole('button', { name: 'Clear selected location' }))
-    expect(screen.getByText('Pick a location to begin')).toBeInTheDocument()
+    expect(screen.getByText('Explore Bangladesh')).toBeInTheDocument() // the map-first explorer is always there; no location is needed
     expect(loadLocation('user-a')).toBeNull()
   })
 

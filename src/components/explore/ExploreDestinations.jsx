@@ -75,9 +75,9 @@ function Details({ place, hour, whenLabel, locationName, onClose }) {
  * and actions. `forecast` is the reply for the same location (or null); `departure` is { at, title } of the user's
  * next planned departure (or null). Without a forecast value for a time, no weather claim is made.
  */
-export function ExploreDestinations({ location, forecast, departure, initialCategory = 'all' }) {
+export function ExploreDestinations({ location, forecast, departure, initialCategory = 'all', initialRadius = 2500, renderMap = null, bare = false, description = null }) {
   const [category, setCategory] = useState(initialCategory)
-  const [radius, setRadius] = useState(2500)
+  const [radius, setRadius] = useState(initialRadius)
   const [when, setWhen] = useState('now')
   const [selectedId, setSelectedId] = useState(null)
 
@@ -97,15 +97,8 @@ export function ExploreDestinations({ location, forecast, departure, initialCate
   const conditions = conditionsFor(hour)
   const select = useCallback((id) => setSelectedId(id), [])
 
-  return (
-    <Card>
-      <CardHeader>
-        <div>
-          <CardTitle>Explore destinations</CardTitle>
-          <CardDescription>Places near {location.name}, from OpenStreetMap.</CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+  const content = (
+    <>
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by category">
           {EXPLORE_CATEGORIES.map((c) => (
             <button
@@ -157,7 +150,7 @@ export function ExploreDestinations({ location, forecast, departure, initialCate
             {/* Map on the left, destination cards on the right (stacked on small screens). */}
             <div className="grid gap-4 lg:grid-cols-5">
               <div className="min-w-0 lg:col-span-3">
-                <ExploreMap center={{ latitude: location.latitude, longitude: location.longitude, name: location.name }} places={places} selectedId={selected?.id ?? null} onSelect={select} />
+                {renderMap ? renderMap({ places, selectedId: selected?.id ?? null, onSelect: select }) : <ExploreMap center={{ latitude: location.latitude, longitude: location.longitude, name: location.name }} places={places} selectedId={selected?.id ?? null} onSelect={select} />}
               </div>
               <div className="min-w-0 space-y-2 lg:col-span-2">
                 {initialLoading ? (
@@ -183,7 +176,19 @@ export function ExploreDestinations({ location, forecast, departure, initialCate
             {selected && <Details place={selected} hour={hour} whenLabel={whenLabel} locationName={location.name} onClose={() => setSelectedId(null)} />}
             {!failed && !initialLoading && <p className="text-xs text-muted">Place data © OpenStreetMap contributors (ODbL). Opening hours, ratings and prices are not shown because they are not provided here.</p>}
         </>
-      </CardContent>
+    </>
+  )
+
+  if (bare) return <div className="space-y-4">{content}</div>
+  return (
+    <Card>
+      <CardHeader>
+        <div>
+          <CardTitle>Explore destinations</CardTitle>
+          <CardDescription>{description ?? `Places near ${location.name}, from OpenStreetMap.`}</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">{content}</CardContent>
     </Card>
   )
 }

@@ -369,6 +369,7 @@ No bounce/complaint/delivery webhooks (so "delivered" is unknown); the email que
 | Weekly planner, analytics | Week view with priority, conflicts and workload; analytics from real rows (a figure appears only with at least 3 data points) | `phase5*` |
 | PWA and offline | Installable; offline reading of saved events/checklists and checklist ticks that sync on reconnect (never API responses in shared caches); everything else needs a connection | `public/sw.js`, `src/lib/offline/` |
 | Weather & Explore | Location search (Open-Meteo geocoding, Bangladesh first), forecast, nearby places (OpenStreetMap via Overpass), Leaflet map, weather-aware hints | [docs/WEATHER_EXPLORE.md](docs/WEATHER_EXPLORE.md) |
+| Bangladesh map | Click-through Bangladesh → division → district → upazila → destination on an interactive map (geoBoundaries data, CC0 / CC BY 3.0 IGO), optional "Use my location" | [docs/EXPLORE_MAP.md](docs/EXPLORE_MAP.md) |
 
 The interface follows a purple and lime design system (tokens, shell, shadcn/ui components, accessibility rules): [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 

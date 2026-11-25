@@ -15,7 +15,7 @@ Everything below runs from the repository root. Database tests use **only** `rea
 ## What exists (latest full run)
 | Suite | Result |
 |---|---|
-| Frontend (`npm test`) | 377 tests, 24 files (3 consecutive full runs) |
+| Frontend (`npm test`) | 392 tests, 25 files (includes 15 for the Bangladesh map: data integrity, hierarchy, point-in-polygon, location permission, failures) |
 | Backend pure (`test:pure`) | 242 tests, 12 files |
 | Backend with database (`npm --prefix backend test`) | 691 tests, 31 files (3 files needed one automatic re-run for the known Windows worker crash) |
 | Lint / build | clean / passes (main chunk about 690 kB / 204 kB gzip, Explore page 169 kB loaded only when opened) |
@@ -26,6 +26,7 @@ Coverage by area: authentication and per-user isolation; events, recurrence, exc
 Run against a production build, the test database and the real providers. Last results:
 - **PWA / offline** (`pwa-offline-browser-check.mjs`): 18 of 18 passed (installable manifest, service worker, offline reload, offline tick, reconnect sync without duplicates, conflict handling, account switching and logout purge).
 - **After the purple/lime redesign** both scripts were re-run on the new build: Weather & Explore 32 of 32 (same two NOTEs), PWA/offline 18 of 18.
+- **Bangladesh map** (`bangladesh-map-browser-check.mjs`): see docs/EXPLORE_MAP.md; real Edge, production build, TEST database API.
 - **Weather & Explore** (`explore-browser-check.mjs`): 32 of 32 passed, with two NOTEs: live nearby places could not be returned because every public Overpass server was down or very slow that day (the application showed its error state with "Try again", and the map and weather still worked), and the small touch targets reported were Leaflet's own attribution links. Verified live: lazy loading, real Open-Meteo search and forecast, Leaflet with 15 of 15 OpenStreetMap tiles loaded, dashboard sections, no horizontal scrolling at 820 and 390 px, dark theme (no text under 3:1 contrast on Explore), current location denied and granted.
 - **Still to confirm when a public Overpass server is healthy (or with your own `OVERPASS_URL`):** live nearby places, details, "Save to my places", and "Plan a departure here". They are covered by unit and integration tests and by one real Overpass response used to check the mapping, but not yet seen end to end in a browser.
 

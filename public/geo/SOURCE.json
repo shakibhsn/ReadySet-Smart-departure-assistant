@@ -1,0 +1,28 @@
+{
+  "dataset": "geoBoundaries gbOpen, Bangladesh",
+  "website": "https://www.geoboundaries.org",
+  "builtOn": "2026-11-25",
+  "levels": {
+    "ADM1": {
+      "license": "CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+      "year": "2015",
+      "source": "geoBoundaries, Wikimedia Commons",
+      "count": "8",
+      "file": "https://www.geoboundaries.org/data/snapshots/1c423398df24ddf6e730b116567d2181c9782778d0459c3f3b76ca2f9f12b6bc/gbOpen/BGD/ADM1/geoBoundaries-BGD-ADM1_simplified.geojson"
+    },
+    "ADM2": {
+      "license": "Creative Commons Attribution 3.0 Intergovernmental Organisations (CC BY 3.0 IGO)",
+      "year": "2020",
+      "source": "Bangladesh Bureau of Statistics (BBS), OCHA ROAP",
+      "count": "64",
+      "file": "https://www.geoboundaries.org/data/snapshots/1c423398df24ddf6e730b116567d2181c9782778d0459c3f3b76ca2f9f12b6bc/gbOpen/BGD/ADM2/geoBoundaries-BGD-ADM2_simplified.geojson"
+    },
+    "ADM3": {
+      "license": "Creative Commons Attribution 3.0 Intergovernmental Organisations (CC BY 3.0 IGO)",
+      "year": "2020",
+      "source": "Bangladesh Bureau of Statistics (BBS), OCHA ROAP",
+      "count": "544",
+      "file": "https://www.geoboundaries.org/data/snapshots/1c423398df24ddf6e730b116567d2181c9782778d0459c3f3b76ca2f9f12b6bc/gbOpen/BGD/ADM3/geoBoundaries-BGD-ADM3_simplified.geojson"
+    }
+  }
+}
