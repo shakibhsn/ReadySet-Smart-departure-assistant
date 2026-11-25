@@ -154,24 +154,32 @@ export function ExploreDestinations({ location, forecast, departure, initialCate
               </Alert>
             )}
             {/* The map always shows the chosen location, even when the places could not be loaded. */}
-            <ExploreMap center={{ latitude: location.latitude, longitude: location.longitude, name: location.name }} places={places} selectedId={selected?.id ?? null} onSelect={select} />
-            {initialLoading ? (
-              <div role="status" aria-label="Loading destinations" className="space-y-2">
-                <Skeleton className="h-16" />
-                <Skeleton className="h-16" />
+            {/* Map on the left, destination cards on the right (stacked on small screens). */}
+            <div className="grid gap-4 lg:grid-cols-5">
+              <div className="min-w-0 lg:col-span-3">
+                <ExploreMap center={{ latitude: location.latitude, longitude: location.longitude, name: location.name }} places={places} selectedId={selected?.id ?? null} onSelect={select} />
               </div>
-            ) : failed ? null : places.length === 0 ? (
-              <EmptyState icon={MapPinOff} title="No places found here" description="OpenStreetMap has no named places for this filter within the chosen distance. Try a larger distance or another category." className="py-8" />
-            ) : (
-              <>
-                <p className="text-sm text-muted" aria-live="polite">{places.length} {places.length === 1 ? 'place' : 'places'}, nearest first{places.length >= 40 ? ' (showing the nearest 40)' : ''}.</p>
-                <ul className="grid max-h-[28rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2" aria-label="Destinations">
-                  {places.map((p) => (
-                    <DestinationCard key={p.id} place={p} selected={p.id === selected?.id} onSelect={select} fit={fitFor(conditions.mode, p.category)} />
-                  ))}
-                </ul>
-              </>
-            )}
+              <div className="min-w-0 space-y-2 lg:col-span-2">
+                {initialLoading ? (
+                  <div role="status" aria-label="Loading destinations" className="space-y-2">
+                    <Skeleton className="h-16" />
+                    <Skeleton className="h-16" />
+                    <Skeleton className="h-16" />
+                  </div>
+                ) : failed ? null : places.length === 0 ? (
+                  <EmptyState icon={MapPinOff} title="No places found here" description="OpenStreetMap has no named places for this filter within the chosen distance. Try a larger distance or another category." className="py-8" />
+                ) : (
+                  <>
+                    <p className="text-sm text-muted" aria-live="polite">{places.length} {places.length === 1 ? 'place' : 'places'}, nearest first{places.length >= 40 ? ' (showing the nearest 40)' : ''}.</p>
+                    <ul className="grid max-h-[26rem] gap-2 overflow-y-auto pr-1 lg:max-h-[28rem]" aria-label="Destinations">
+                      {places.map((p) => (
+                        <DestinationCard key={p.id} place={p} selected={p.id === selected?.id} onSelect={select} fit={fitFor(conditions.mode, p.category)} />
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            </div>
             {selected && <Details place={selected} hour={hour} whenLabel={whenLabel} locationName={location.name} onClose={() => setSelectedId(null)} />}
             {!failed && !initialLoading && <p className="text-xs text-muted">Place data © OpenStreetMap contributors (ODbL). Opening hours, ratings and prices are not shown because they are not provided here.</p>}
         </>

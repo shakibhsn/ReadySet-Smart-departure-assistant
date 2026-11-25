@@ -27,26 +27,31 @@ export default function ExplorePage() {
     <div className="space-y-6">
       <PageHeader title="Weather & Explore" description="Check the weather anywhere in Bangladesh and find places worth going to." />
 
-      <Card>
-        <CardHeader>
-          <div>
-            <CardTitle>Your location</CardTitle>
-            <CardDescription>Used for the weather on your dashboard and for nearby places. Saved on this device.</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <LocationSearch selected={location} onSelect={setLocation} onClear={clear} />
-        </CardContent>
-      </Card>
+      <div className="grid items-start gap-6 xl:grid-cols-12">
+        {/* Left: where you are and what the weather is like; right: the map and places to go */}
+        <div className="min-w-0 space-y-6 xl:col-span-4">
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Your location</CardTitle>
+                <CardDescription>Used for the weather on your dashboard and for nearby places. Saved on this device.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <LocationSearch selected={location} onSelect={setLocation} onClear={clear} />
+            </CardContent>
+          </Card>
+          {location && <LocationWeatherCard location={location} query={forecast} />}
+        </div>
 
-      {!location ? (
-        <EmptyState icon={MapPinned} title="Pick a location to begin" description="Search for your city, district or area, or share your current location, and ReadySet will show the weather and nearby places." />
-      ) : (
-        <>
-          <LocationWeatherCard location={location} query={forecast} />
-          <ExploreDestinations key={`${location.latitude},${location.longitude}`} initialCategory={initialCategory} location={location} forecast={forecast.data} departure={departure} />
-        </>
-      )}
+        <div className="min-w-0 xl:col-span-8">
+          {!location ? (
+            <EmptyState icon={MapPinned} title="Pick a location to begin" description="Search for your city, district or area, or share your current location, and ReadySet will show the weather and nearby places." className="py-16" />
+          ) : (
+            <ExploreDestinations key={`${location.latitude},${location.longitude}`} initialCategory={initialCategory} location={location} forecast={forecast.data} departure={departure} />
+          )}
+        </div>
+      </div>
     </div>
   )
 }

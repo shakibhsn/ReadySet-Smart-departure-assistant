@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 /** `interactive` adds the hover lift (use it only for cards that are links or buttons). */
 export function Card({ className, interactive = false, ...props }) {
   return (
-    <div className={cn('rounded-2xl border border-line bg-surface shadow-card', interactive && 'card-hover', className)} {...props} />
+    <div className={cn('rounded-[22px] border border-line bg-surface shadow-card', interactive && 'card-hover', className)} {...props} />
   )
 }
 

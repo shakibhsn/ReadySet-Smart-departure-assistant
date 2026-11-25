@@ -370,6 +370,8 @@ No bounce/complaint/delivery webhooks (so "delivered" is unknown); the email que
 | PWA and offline | Installable; offline reading of saved events/checklists and checklist ticks that sync on reconnect (never API responses in shared caches); everything else needs a connection | `public/sw.js`, `src/lib/offline/` |
 | Weather & Explore | Location search (Open-Meteo geocoding, Bangladesh first), forecast, nearby places (OpenStreetMap via Overpass), Leaflet map, weather-aware hints | [docs/WEATHER_EXPLORE.md](docs/WEATHER_EXPLORE.md) |
 
+The interface follows a purple and lime design system (tokens, shell, shadcn/ui components, accessibility rules): [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
+
 **Optional environment variables** (see the `.env.example` files; none are required): `OPENROUTER_API_KEY`, `ASSISTANT_MODEL` (assistant wording), `OVERPASS_URL` (nearby places; one URL or a comma-separated list), `VITE_MAP_TILE_URL` (map tiles). No secret ever belongs in a `VITE_*` variable.
 
 **Database migrations.** Ten migrations are applied to the development and test databases. The next proposed change, `user_preferences.weather_location` (server-side storage of the chosen weather location), is **prepared but not applied**: [docs/proposed/weather_location/](docs/proposed/weather_location/README.md). The history, backups and the procedure used are in [docs/MIGRATION_READINESS.md](docs/MIGRATION_READINESS.md). Always take and verify a backup first (`pg_dump` custom format, scratch restore, full comparison) and never run `migrate reset` or `db push`.

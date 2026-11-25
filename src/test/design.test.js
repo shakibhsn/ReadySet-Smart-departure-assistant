@@ -17,9 +17,12 @@ describe('design tokens', () => {
   it.each([
     ['amber', '#edae49'],
     ['rose', '#d1495b'],
-    ['teal (accent 600)', '#00798c'],
-    ['blue (brand 600)', '#30638e'],
-    ['navy (brand 900)', '#003d5b'],
+    ['primary purple (brand 600)', '#7650d8'],
+    ['deep purple (brand 900)', '#452778'],
+    ['soft lavender', '#c9c9ff'],
+    ['lime', '#d7ff35'],
+    ['canvas background', '#f5f4fa'],
+    ['main text', '#1c1930'],
   ])('the %s palette color is defined as a token', (_name, hex) => {
     expect(lightTokens.toLowerCase()).toContain(hex)
   })

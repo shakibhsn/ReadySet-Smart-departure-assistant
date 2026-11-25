@@ -7,7 +7,8 @@ import { cn } from '@/lib/utils'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-export function MonthCalendar({ month, events, selected, onSelect }) {
+/** `compact`: a small calendar for the dashboard (short cells, dots centred). */
+export function MonthCalendar({ month, events, selected, onSelect, compact = false }) {
   const days = eachDayOfInterval({
     start: startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
     end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
@@ -35,7 +36,8 @@ export function MonthCalendar({ month, events, selected, onSelect }) {
               aria-label={`${format(day, 'EEEE, MMMM d')}, ${dayEvents.length} events`}
               aria-pressed={isSelected}
               className={cn(
-                'flex min-h-14 cursor-pointer flex-col items-center gap-1 rounded-xl border p-1.5 text-sm transition-colors sm:min-h-20 sm:items-start sm:p-2',
+                'flex cursor-pointer flex-col items-center gap-1 rounded-2xl border p-1.5 text-sm transition-colors',
+                compact ? 'min-h-12' : 'min-h-14 sm:min-h-20 sm:items-start sm:p-2',
                 isSelected ? 'border-brand-600 bg-brand-50' : 'border-transparent hover:bg-canvas',
                 !isSameMonth(day, month) && 'text-slate-300',
               )}
@@ -44,11 +46,12 @@ export function MonthCalendar({ month, events, selected, onSelect }) {
                 className={cn(
                   'flex size-7 items-center justify-center rounded-full text-sm font-semibold',
                   isToday(day) && 'bg-brand-600 text-white',
+                  isSelected && !isToday(day) && 'bg-lime text-lime-ink',
                 )}
               >
                 {format(day, 'd')}
               </span>
-              <span className="flex flex-wrap justify-center gap-1 sm:justify-start">
+              <span className={cn('flex flex-wrap justify-center gap-1', !compact && 'sm:justify-start')}>
                 {dayEvents.slice(0, 3).map((e) => (
                   <span key={e.key} className={cn('size-1.5 rounded-full', getCategory(e.category).dot)} />
                 ))}

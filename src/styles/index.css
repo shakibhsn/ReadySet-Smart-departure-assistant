@@ -2,41 +2,50 @@
 @import "@fontsource-variable/plus-jakarta-sans";
 
 /*
- * ReadySet design tokens. Palette: amber #EDAE49 · rose #D1495B · teal #00798C · blue #30638E · navy #003D5B.
- *   brand  = blue (30638E at 600) deepening to navy (003D5B at 900)  -> primary actions, links, emphasis
- *   accent = teal (00798C at 600)                                     -> "ready" / success / progress
- *   amber  = warm highlight (EDAE49 at 400)                           -> weather, caution, small highlights
+ * ReadySet design tokens. Palette: primary purple #7650D8 · deep purple #452778 · lavender #C9C9FF · lime #D7FF35
+ * (plus amber #EDAE49 and rose #D1495B for weather cautions and alerts).
+ *   brand  = purple (7650D8 at 600) deepening to deep purple (452778 at 900) -> primary actions, links, emphasis
+ *   accent = lime-green (D7FF35 at 300, dark olive at 600/700 for text)       -> "ready" / success / progress / highlights
+ *   lime   = the pure highlight (#D7FF35), used SPARINGLY: active navigation, key actions, status dots
+ *   amber  = warm highlight (EDAE49 at 400)                                   -> weather, caution, small highlights
  *   rose   = alert / destructive (D1495B at 500)
  * Components use these tokens only; no component should hard-code a color.
  */
 @theme {
   --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
 
-  --color-canvas: #f4f7fa;
+  --color-shell: #ddd9f3; /* the soft purple page behind the big rounded dashboard container */
+  --color-canvas: #f5f4fa;
   --color-surface: #ffffff;
-  --color-ink: #0a2433;
-  --color-muted: #587080;
-  --color-line: #e0e8ef;
+  --color-ink: #1c1930;
+  --color-muted: #6f6c82; /* #777487 in the brief, a touch darker so small text keeps 4.5:1 on the canvas */
+  --color-line: #e7e4f2;
 
-  --color-brand-50: #eff5fa;
-  --color-brand-100: #dbe8f3;
-  --color-brand-200: #b9d2e6;
-  --color-brand-300: #8db3d1;
-  --color-brand-400: #5a8db4;
-  --color-brand-500: #3d77a3;
-  --color-brand-600: #30638e;
-  --color-brand-700: #265177;
-  --color-brand-800: #153f5f;
-  --color-brand-900: #003d5b;
+  --color-lavender: #c9c9ff;
+  --color-lime: #d7ff35;
+  --color-lime-ink: #2b1a55; /* text on a lime surface */
 
-  --color-accent-50: #e8f6f8;
-  --color-accent-100: #c6e9ee;
-  --color-accent-200: #94d4dd;
-  --color-accent-300: #5dbbc9;
-  --color-accent-400: #25a0b3;
-  --color-accent-500: #0b8ca0;
-  --color-accent-600: #00798c;
-  --color-accent-700: #00606f;
+  --color-brand-50: #f4f1fd;
+  --color-brand-100: #e9e3fb;
+  --color-brand-200: #d4c8f6;
+  --color-brand-300: #b9a5ef;
+  --color-brand-400: #9b7de6;
+  --color-brand-500: #8760df;
+  --color-brand-600: #7650d8;
+  --color-brand-700: #6040b4;
+  --color-brand-800: #4e2e8c;
+  --color-brand-900: #452778;
+
+  --color-accent-50: #f7ffd9;
+  --color-accent-100: #edffa8;
+  --color-accent-200: #e2ff70;
+  --color-accent-300: #d7ff35;
+  --color-accent-400: #c5ee1e;
+  --color-accent-500: #9dbf0c;
+  --color-accent-600: #5c7a06;
+  --color-accent-700: #435805;
+  --color-accent-fill: #5c7a06; /* a solid accent surface (badges, checked boxes) ... */
+  --color-on-accent: #ffffff; /* ... and the text on it, which flips in dark mode */
 
   --color-amber-50: #fdf6e8;
   --color-amber-100: #fae9c7;
@@ -56,64 +65,72 @@
   --color-rose-600: #bd3a4d;
   --color-rose-700: #9d2e3f;
 
-  /* Layered, navy-tinted shadows: a tight contact shadow + a soft ambient one. */
-  --shadow-card: 0 1px 2px rgb(0 61 91 / 0.05), 0 6px 18px -6px rgb(0 61 91 / 0.08);
-  --shadow-lift: 0 2px 4px rgb(0 61 91 / 0.06), 0 16px 32px -10px rgb(0 61 91 / 0.18);
-  --shadow-button: 0 1px 2px rgb(0 61 91 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.14);
+  /* Layered, purple-tinted shadows: a tight contact shadow + a soft ambient one. */
+  --shadow-card: 0 1px 2px rgb(69 39 120 / 0.05), 0 8px 22px -8px rgb(69 39 120 / 0.1);
+  --shadow-lift: 0 2px 4px rgb(69 39 120 / 0.07), 0 18px 36px -12px rgb(69 39 120 / 0.22);
+  --shadow-button: 0 1px 2px rgb(69 39 120 / 0.22), inset 0 1px 0 rgb(255 255 255 / 0.16);
+  --shadow-shell: 0 30px 60px -24px rgb(69 39 120 / 0.35);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Gradients that need to flip with the theme (light values here, dark values in the dark block). */
 :root {
-  --grad-primary-from: #30638e;
-  --grad-primary-to: #1f4d73;
-  --grad-hero-from: #003d5b;
-  --grad-hero-to: #30638e;
-  --glow-a: rgb(48 99 142 / 0.1);
-  --glow-b: rgb(0 121 140 / 0.09);
-  --glow-c: rgb(237 174 73 / 0.07);
+  --grad-primary-from: #7b57dd;
+  --grad-primary-to: #6a43cf;
+  --grad-hero-from: #452778;
+  --grad-hero-to: #7650d8;
+  --glow-a: rgb(118 80 216 / 0.1);
+  --glow-b: rgb(215 255 53 / 0.1);
+  --glow-c: rgb(201 201 255 / 0.2);
 }
 
 html[data-theme="dark"] {
   color-scheme: dark;
 
-  --color-canvas: #07131c;
-  --color-surface: #0d202e;
-  --color-ink: #eaf3f8;
-  --color-muted: #91a9ba;
-  --color-line: #1d3547;
+  --color-shell: #07050f;
+  --color-canvas: #0f0c1c;
+  --color-surface: #181430;
+  --color-ink: #eeebfa;
+  --color-muted: #a29eb8;
+  --color-line: #2a2545;
 
-  --color-brand-50: #0f2a3d;
-  --color-brand-100: #15374e;
-  --color-brand-200: #1f4a68;
-  --color-brand-300: #336b92;
-  --color-brand-400: #5a9bc7;
-  --color-brand-500: #6aa9d4;
-  --color-brand-600: #4a93c6;
-  --color-brand-700: #8cc3e6;
-  --color-brand-800: #b3d8ef;
-  --color-brand-900: #dcedf8;
+  --color-lavender: #5d57b8;
+  --color-lime: #d7ff35;
+  --color-lime-ink: #1d1240;
 
-  --color-accent-50: #0b2f36;
-  --color-accent-100: #0f3f48;
-  --color-accent-200: #145561;
-  --color-accent-300: #1d7d8d;
-  --color-accent-400: #2fb8cc;
-  --color-accent-500: #3cc7da;
-  --color-accent-600: #12a3b8;
-  --color-accent-700: #a0e9f3;
+  --color-brand-50: #211a3d;
+  --color-brand-100: #2b2352;
+  --color-brand-200: #3b3070;
+  --color-brand-300: #5640a3;
+  --color-brand-400: #8264dd;
+  --color-brand-500: #957aea;
+  --color-brand-600: #8e6fe8;
+  --color-brand-700: #b7a1f5;
+  --color-brand-800: #d2c5fa;
+  --color-brand-900: #eae4fd;
 
-  --color-slate-50: #11202d;
-  --color-slate-100: #19293a;
-  --color-slate-200: #263a4e;
-  --color-slate-300: #38506a;
-  --color-slate-400: #77899f;
-  --color-slate-500: #9aaabe;
-  --color-slate-600: #bac6d5;
-  --color-slate-700: #d4dcea;
-  --color-slate-800: #e3e9f2;
-  --color-slate-900: #f2f5fb;
+  --color-accent-50: #1d2606;
+  --color-accent-100: #2a3708;
+  --color-accent-200: #3c4d0b;
+  --color-accent-300: #5f790f;
+  --color-accent-400: #b9e02a;
+  --color-accent-500: #cbf23a;
+  --color-accent-600: #a8cc1c;
+  --color-accent-700: #e2ff7a;
+  --color-accent-fill: #c5ee1e;
+  --color-on-accent: #1d1240;
+
+  --color-slate-50: #1a1631;
+  --color-slate-100: #231e3f;
+  --color-slate-200: #332d55;
+  --color-slate-300: #4a4272;
+  --color-slate-400: #8a84a8;
+  --color-slate-500: #a8a3c0;
+  --color-slate-600: #c3bfd6;
+  --color-slate-700: #d9d6e8;
+  --color-slate-800: #e8e6f2;
+  --color-slate-900: #f3f2f9;
 
   --color-rose-50: #35202a;
   --color-rose-100: #482734;
@@ -137,17 +154,18 @@ html[data-theme="dark"] {
   --color-amber-800: #ffe9ad;
   --color-amber-900: #fff1cc;
 
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.25), 0 6px 18px -6px rgb(0 0 0 / 0.3);
-  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.25), 0 16px 32px -10px rgb(0 0 0 / 0.5);
-  --shadow-button: 0 1px 2px rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.1);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 22px -8px rgb(0 0 0 / 0.4);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.3), 0 18px 36px -12px rgb(0 0 0 / 0.55);
+  --shadow-button: 0 1px 2px rgb(0 0 0 / 0.4), inset 0 1px 0 rgb(255 255 255 / 0.1);
+  --shadow-shell: 0 30px 60px -24px rgb(0 0 0 / 0.6);
 
-  --grad-primary-from: #4a93c6;
-  --grad-primary-to: #30638e;
-  --grad-hero-from: #0a2a3d;
-  --grad-hero-to: #1d4c6e;
-  --glow-a: rgb(74 147 198 / 0.12);
-  --glow-b: rgb(47 184 204 / 0.08);
-  --glow-c: rgb(237 174 73 / 0.04);
+  --grad-primary-from: #8e6fe8;
+  --grad-primary-to: #7650d8;
+  --grad-hero-from: #1a1033;
+  --grad-hero-to: #4a2e96;
+  --glow-a: rgb(142 111 232 / 0.14);
+  --glow-b: rgb(215 255 53 / 0.04);
+  --glow-c: rgb(93 87 184 / 0.1);
 }
 
 @layer base {
@@ -195,23 +213,23 @@ html[data-theme="dark"] {
    */
   .hero-scope {
     --color-surface: #ffffff;
-    --color-ink: #0a2433;
-    --color-muted: #587080;
-    --color-line: #e0e8ef;
-    --color-brand-50: #eff5fa;
-    --color-brand-100: #dbe8f3;
-    --color-brand-200: #b9d2e6;
-    --color-brand-300: #8db3d1;
-    --color-brand-400: #5a8db4;
-    --color-brand-500: #3d77a3;
-    --color-brand-600: #30638e;
-    --color-brand-700: #265177;
-    --color-accent-50: #e8f6f8;
-    --color-accent-100: #c6e9ee;
-    --color-accent-200: #94d4dd;
-    --color-accent-300: #5dbbc9;
-    --color-accent-400: #25a0b3;
-    --color-accent-600: #00798c;
+    --color-ink: #1c1930;
+    --color-muted: #6f6c82;
+    --color-line: #e7e4f2;
+    --color-brand-50: #f4f1fd;
+    --color-brand-100: #e9e3fb;
+    --color-brand-200: #d4c8f6;
+    --color-brand-300: #b9a5ef;
+    --color-brand-400: #9b7de6;
+    --color-brand-500: #8760df;
+    --color-brand-600: #7650d8;
+    --color-brand-700: #6040b4;
+    --color-accent-50: #f7ffd9;
+    --color-accent-100: #edffa8;
+    --color-accent-200: #e2ff70;
+    --color-accent-300: #d7ff35;
+    --color-accent-400: #c5ee1e;
+    --color-accent-600: #5c7a06;
     --color-amber-300: #f1c26f;
     --color-amber-400: #edae49;
   }
@@ -268,6 +286,6 @@ dialog[open]::backdrop { animation: rs-fade 200ms ease-out both; backdrop-filter
 
 /* Weather & Explore map markers (Leaflet divIcons: plain CSS dots, no image assets). */
 .rs-pin { display: block; width: 18px; height: 18px; margin: 2px; border-radius: 9999px; border: 3px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 0.45); }
-.rs-pin-home { background: #30638e; }
-.rs-pin-place { background: #00798c; }
-.rs-pin-selected { background: #edae49; transform: scale(1.25); }
+.rs-pin-home { background: #7650d8; }
+.rs-pin-place { background: #452778; }
+.rs-pin-selected { background: #d7ff35; transform: scale(1.25); box-shadow: 0 0 0 2px #452778, 0 1px 4px rgb(0 0 0 / 0.45); }

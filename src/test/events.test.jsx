@@ -299,7 +299,7 @@ describe('Dashboard shows real events', () => {
     await greeting('Alice')
     expect(await screen.findByText(/You have 2 events scheduled/)).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Next departure' })).toHaveTextContent('Today class')
-    const todaySection = screen.getByRole('heading', { name: /Today's schedule/ }).closest('div[class*="rounded-2xl"]')
+    const todaySection = screen.getByRole('heading', { name: /Today's schedule/ }).closest('div[class*="rounded-"]')
     expect(within(todaySection).getByText('Today class')).toBeInTheDocument()
     expect(within(todaySection).queryByText('Tomorrow flight')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Upcoming events' })).toBeInTheDocument()

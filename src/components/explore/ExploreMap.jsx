@@ -60,8 +60,8 @@ export function ExploreMap({ center, places = [], selectedId = null, onSelect, c
   }, [center.latitude, center.longitude, center.name, places, selectedId, onSelect])
 
   return (
-    <div className={`relative isolate z-0 overflow-hidden rounded-2xl border border-line ${className}`}>
-      <div ref={host} role="region" aria-label={`Map of places near ${center.name}`} className="h-72 w-full sm:h-96" />
+    <div className={`relative isolate z-0 overflow-hidden rounded-[22px] border border-line shadow-card ${className}`}>
+      <div ref={host} role="region" aria-label={`Map of places near ${center.name}`} className="h-72 w-full sm:h-96 lg:h-[28rem]" />
     </div>
   )
 }

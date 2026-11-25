@@ -24,3 +24,14 @@ if (!HTMLDialogElement.prototype.showModal) {
     this.removeAttribute('open')
   }
 }
+
+// Radix UI (shadcn Tooltip / DropdownMenu) needs a few browser APIs that jsdom does not implement.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+Element.prototype.hasPointerCapture ??= () => false
+Element.prototype.setPointerCapture ??= () => {}
+Element.prototype.releasePointerCapture ??= () => {}
+Element.prototype.scrollIntoView ??= () => {}

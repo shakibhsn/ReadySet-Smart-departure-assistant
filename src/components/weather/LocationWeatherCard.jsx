@@ -7,6 +7,7 @@ import { WeatherIcon } from '@/components/weather/WeatherIcon'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatTemp, loadUnit, saveUnit } from '@/lib/weatherLocation'
+import { cn } from '@/lib/utils'
 import { formatDayLabel, formatRelative, formatTime12 } from '@/utils/format'
 
 const NA = 'Not available'
@@ -48,7 +49,7 @@ export function ForecastView({ forecast, unit, compact = false }) {
           <p className="text-4xl font-extrabold tracking-tight" aria-label={`Current temperature ${t(current.temperatureC)}`}>{t(current.temperatureC)}</p>
           <p className="text-sm text-muted">{current.condition}</p>
         </div>
-        <dl className="grid w-full grid-cols-1 gap-x-6 gap-y-2 sm:ml-auto sm:w-auto sm:grid-cols-2">
+        <dl className={cn('grid w-full grid-cols-1 gap-x-6 gap-y-2', !compact && 'sm:ml-auto sm:w-auto sm:grid-cols-2')}>
           <Stat icon={Thermometer} label="Feels like" value={t(current.feelsLikeC)} />
           <Stat icon={Thermometer} label="Min / max" value={today ? `${t(today.minC)} / ${t(today.maxC)}` : NA} />
           <Stat icon={Droplets} label="Chance of rain" value={current.rainChancePercent === null ? NA : `${current.rainChancePercent}%`} />
@@ -75,8 +76,8 @@ export function ForecastView({ forecast, unit, compact = false }) {
           <h3 className="mb-2 text-sm font-bold text-ink">{compact ? 'Next hours' : 'Next 24 hours'}</h3>
           <ol className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
             {hours.map((h) => (
-              <li key={h.time} className="flex w-16 shrink-0 flex-col items-center gap-1 rounded-xl border border-line bg-canvas p-2 text-center">
-                <span className="text-xs font-semibold text-muted">{clock(h.time)}</span>
+              <li key={h.time} className="flex w-[4.5rem] shrink-0 flex-col items-center gap-1 rounded-2xl border border-line bg-canvas p-2 text-center">
+                <span className="whitespace-nowrap text-xs font-semibold text-muted">{clock(h.time)}</span>
                 <WeatherIcon icon={h.icon} className="size-5 text-amber-500" />
                 <span className="text-sm font-bold">{t(h.temperatureC)}</span>
                 <span className="text-[11px] text-muted">{h.rainChancePercent === null ? NA : `${h.rainChancePercent}% rain`}</span>
@@ -87,15 +88,15 @@ export function ForecastView({ forecast, unit, compact = false }) {
       )}
 
       {!compact && days.length > 0 && (
-        <section aria-label="Daily forecast">
+        <section aria-label="Daily forecast" className="@container">
           <h3 className="mb-2 text-sm font-bold text-ink">Next {days.length} days</h3>
           <ul className="divide-y divide-line rounded-xl border border-line">
             {days.map((d) => (
               <li key={d.date} className="flex items-center gap-3 px-3 py-2 text-sm">
                 <span className="w-24 shrink-0 font-semibold">{formatDayLabel(d.date)}</span>
                 <WeatherIcon icon={d.icon} className="size-5 shrink-0 text-amber-500" />
-                <span className="hidden min-w-0 flex-1 truncate text-muted sm:block">{d.condition}</span>
-                <span className="ml-auto flex items-center gap-1 text-xs text-muted"><Droplets className="size-3.5" aria-hidden="true" />{d.rainChancePercent === null ? NA : `${d.rainChancePercent}%`}</span>
+                <span className="sr-only @md:not-sr-only @md:block @md:min-w-0 @md:flex-1 @md:truncate @md:text-muted">{d.condition}</span>
+                <span className="ml-auto flex items-center gap-1 text-xs text-muted @md:ml-0"><Droplets className="size-3.5" aria-hidden="true" />{d.rainChancePercent === null ? NA : `${d.rainChancePercent}%`}</span>
                 <span className="w-24 shrink-0 text-right font-semibold">{t(d.minC)} / {t(d.maxC)}</span>
               </li>
             ))}

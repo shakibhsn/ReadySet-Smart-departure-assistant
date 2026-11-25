@@ -46,19 +46,19 @@ export function AppSidebar({ onNavigate, onClose, showClose = false }) {
             className={({ isActive }) =>
               cn(
                 'group relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-[background-color,color,box-shadow] duration-150',
-                isActive ? 'bg-brand-50 text-brand-700 shadow-[inset_0_0_0_1px_var(--color-brand-100)]' : 'text-muted hover:bg-canvas hover:text-ink',
+                isActive ? 'bg-lime text-lime-ink' : 'text-muted hover:bg-brand-50 hover:text-brand-700',
               )
             }
           >
             {({ isActive }) => (
               <>
                 {isActive && (
-                  <span className="anim-fade absolute -left-3 top-2 bottom-2 w-1 rounded-r-full bg-brand-gradient" aria-hidden="true" />
+                  <span className="anim-fade absolute -left-3 top-2 bottom-2 w-1 rounded-r-full bg-lime-ink" aria-hidden="true" />
                 )}
-                <Icon className={cn('size-5', isActive ? 'text-brand-600' : 'text-slate-400 group-hover:text-brand-600')} />
+                <Icon className={cn('size-5', isActive ? 'text-lime-ink' : 'text-slate-400 group-hover:text-brand-600')} />
                 <span className="flex-1">{label}</span>
                 {label === 'Notifications' && unread > 0 && (
-                  <span className="tabular rounded-full bg-accent-600 px-2 py-0.5 text-xs font-bold text-white">{unread}</span>
+                  <span className="tabular rounded-full bg-accent-fill px-2 py-0.5 text-xs font-bold text-on-accent">{unread}</span>
                 )}
               </>
             )}

@@ -6,7 +6,9 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-brand-gradient text-white shadow-(--shadow-button) hover:brightness-110 active:brightness-95',
-        accent: 'bg-accent-600 text-white shadow-(--shadow-button) hover:bg-accent-700',
+        accent: 'bg-accent-fill text-on-accent shadow-(--shadow-button) hover:brightness-110',
+        // The lime highlight: sparingly, for the single most important action on a screen.
+        lime: 'bg-lime text-lime-ink shadow-(--shadow-button) hover:brightness-95',
         outline: 'border border-line bg-surface text-ink shadow-sm hover:bg-brand-50 hover:border-brand-200',
         soft: 'bg-brand-50 text-brand-700 hover:bg-brand-100',
         ghost: 'text-muted hover:bg-brand-50 hover:text-brand-700',
