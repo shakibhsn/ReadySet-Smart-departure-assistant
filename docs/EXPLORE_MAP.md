@@ -31,6 +31,8 @@ Notes on accuracy: the files are the *simplified* geoBoundaries geometry, rounde
 - Selecting on the map never changes the saved weather location used by the dashboard.
 - **Failures:** if the boundary files cannot be loaded the card explains it, offers "Try again" and the rest of the page (location search, weather, nearby places) keeps working.
 
+Screenshots: `docs/screenshots/bangladesh-map/`.
+
 ## Files
 `src/components/explore/BangladeshExplorer.jsx` (state, lists, actions), `BangladeshMap.jsx` (Leaflet layers), `mapShared.js`; `src/lib/geo/` (`boundaries.js` loaders, `geometry.js` point-in-polygon and bounds, `mapColors.js` theme colours); `public/geo/`; tests `src/test/bangladeshExplorer.test.jsx`, `e2e/bangladesh-map-browser-check.mjs`.
 
