@@ -47,6 +47,10 @@ const schema = z.object({
   EMAIL_REMINDERS_ENABLED: blank(flag),
 
   // ---- AI Departure Assistant (optional: without a key the assistant answers from rules, never from a model) ----
+  // Weather & Explore: the Overpass (OpenStreetMap) API used for nearby places. The public instance is shared and rate limited.
+  // One URL, or several separated by commas (tried in order: the main server can be slow, so a mirror is the fallback).
+  OVERPASS_URL: blank(z.string().default('https://overpass-api.de/api/interpreter,https://overpass.kumi.systems/api/interpreter').refine((v) => v.split(',').map((u) => u.trim()).filter(Boolean).every((u) => z.url().safeParse(u).success), 'must be one or more valid URLs separated by commas')),
+
   // OpenRouter (https://openrouter.ai): one key, many models. ASSISTANT_MODEL is an OpenRouter model id such as openai/gpt-5.2.
   OPENROUTER_API_KEY: blank(z.string().min(10).optional()),
   ASSISTANT_MODEL: blank(z.string().min(3).max(100).regex(/^[A-Za-z0-9._:/-]+$/, 'must be an OpenRouter model id such as openai/gpt-5.2').default('openai/gpt-5.2')),

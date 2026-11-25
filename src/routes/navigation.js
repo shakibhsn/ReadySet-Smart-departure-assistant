@@ -1,4 +1,4 @@
-import { Bell, BarChart3, Bot, CalendarDays, CalendarRange, Compass, LayoutDashboard, Gauge, ListChecks, MapPinned, Settings } from 'lucide-react'
+import { Bell, BarChart3, Bot, CalendarDays, CalendarRange, CloudSun, Compass, LayoutDashboard, Gauge, ListChecks, MapPinned, Settings } from 'lucide-react'
 
 export const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -9,6 +9,7 @@ export const NAV_ITEMS = [
   { to: '/profile', label: 'Prep Profile', icon: Gauge },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/assistant', label: 'Assistant', icon: Bot },
+  { to: '/explore', label: 'Weather & Explore', icon: CloudSun },
   { to: '/places', label: 'Saved Places', icon: MapPinned },
   { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/settings', label: 'Settings', icon: Settings },

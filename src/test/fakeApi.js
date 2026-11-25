@@ -16,6 +16,12 @@ export function createFakeApi({ users, events = {} }) {
   const places = {} // token -> { list, defaultId }
   const packing = {} // token -> personal packing templates
   let forgottenList = []
+  const hourSlot = (i) => ({ time: `2030-05-10T${String((14 + i) % 24).padStart(2, '0')}:00`, temperatureC: 30, feelsLikeC: 34, rainChancePercent: 10, windSpeedKmh: 10, condition: 'Partly cloudy', icon: 'partly-cloudy', severeCondition: false })
+  let explore = {
+    forecast: { status: 'ok', stale: false, fetchedAt: new Date().toISOString(), timezone: 'Asia/Dhaka', location: { latitude: 23.85, longitude: 90.26 }, current: { time: '2030-05-10T14:15', temperatureC: 31, feelsLikeC: 36, humidityPercent: 74, windSpeedKmh: 14, precipitationMm: 0, rainChancePercent: 20, isDay: true, condition: 'Partly cloudy', icon: 'partly-cloudy', severeCondition: false }, today: { minC: 26, maxC: 33, rainChancePercent: 40, sunrise: '2030-05-10T05:22', sunset: '2030-05-10T18:21' }, hourly: Array.from({ length: 24 }, (_, i) => hourSlot(i)), daily: [], advice: [] },
+    locations: { status: 'ok', country: 'BD', results: [] },
+    places: { status: 'ok', category: 'all', radiusMeters: 2500, places: [], attribution: '© OpenStreetMap contributors (ODbL)' },
+  }
   // preparation profile (simplified mirror): server-side state the tests can set
   const emptyProfile = () => ({ enabled: true, overrides: {}, minSamples: 3, preparation: { overall: { status: 'insufficient_data', samples: 0, needed: 3, message: 'Not enough history yet: 0 of 3 logged preparations.' }, byCategory: {} }, buffer: { status: 'insufficient_data', samples: 0, needed: 3, message: 'Not enough history yet: 0 of 3 logged departures.' }, weekly: { eventsLogged: 0, message: 'No activity logged this week.' , uncheckedWhenLeaving: [] }, oftenUnchecked: [], note: '' })
   let prepProfile = emptyProfile()
@@ -163,6 +169,10 @@ export function createFakeApi({ users, events = {} }) {
     if (path === '/prep-profile/settings' && method === 'PATCH') { prepProfile = { ...prepProfile, enabled: body.enabled, ...(body.enabled ? {} : { message: 'The preparation profile is turned off: nothing is logged or suggested.' }) }; return ok({ enabled: body.enabled }) }
     if (path === '/prep-profile/overrides' && method === 'PUT') { prepProfile = { ...prepProfile, overrides: { ...prepProfile.overrides, [body.category]: { ...(body.prepMinutes !== undefined && { prepMinutes: body.prepMinutes }), ...(body.bufferMinutes !== undefined && { bufferMinutes: body.bufferMinutes }) } } }; return ok({ overrides: prepProfile.overrides }) }
     if (path.startsWith('/prep-profile/overrides/') && method === 'DELETE') { const { [path.split('/')[3]]: _gone, ...rest } = prepProfile.overrides; prepProfile = { ...prepProfile, overrides: rest }; return ok({ overrides: rest }) }
+    // ---- Weather & Explore (simplified mirror: the tests set what the providers would return) ----
+    if (path === '/weather/forecast') return ok(explore.forecast)
+    if (path === '/locations/search') return ok(explore.locations)
+    if (path === '/places/nearby') return ok(explore.places)
     // ---- saved places, packing templates, forgotten items (simplified mirror; per-token isolation) ----
     if (path === '/places' || path.startsWith('/places/')) {
       const book = (places[token] ??= { list: [], defaultId: null })
@@ -305,6 +315,7 @@ export function createFakeApi({ users, events = {} }) {
     setPrepProfile: (patch) => { prepProfile = { ...prepProfile, ...patch } },
     setPrepState: (patch) => { prepState = { ...prepState, ...patch } },
     setPrepLogs: (list) => { prepLogs = list },
+    setExplore: (patch) => { explore = { ...explore, ...patch } },
     setForgotten: (list) => { forgottenList = list },
     seedPackingTemplates: (token, list) => { (packing[token] ??= []).push(...list.map((t, n) => ({ id: `pack-seed-${n}`, ...t }))) },
     seedPlaces: (token, list, defaultId = null) => { const b = (places[token] ??= { list: [], defaultId: null }); b.list.push(...list.map((x, n) => ({ id: `place-seed-${n}`, kind: 'other', ...x }))); b.defaultId = defaultId },

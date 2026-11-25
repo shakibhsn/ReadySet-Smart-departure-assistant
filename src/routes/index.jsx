@@ -18,6 +18,7 @@ import PrepProfilePage from '@/pages/profile/PrepProfilePage'
 import PlacesPage from '@/pages/places/PlacesPage'
 import PlannerPage from '@/pages/planner/PlannerPage'
 import NotificationsPage from '@/pages/notifications/NotificationsPage'
+import ExplorePage from '@/pages/explore/ExplorePage'
 import WeekPage from '@/pages/week/WeekPage'
 import AnalyticsPage from '@/pages/analytics/AnalyticsPage'
 import AssistantPage from '@/pages/assistant/AssistantPage'
@@ -48,6 +49,7 @@ export default function AppRoutes() {
           <Route path="places" element={<PlacesPage />} />
           <Route path="profile" element={<PrepProfilePage />} />
           <Route path="week" element={<WeekPage />} />
+          <Route path="explore" element={<ExplorePage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="assistant" element={<AssistantPage />} />
           <Route path="notifications" element={<NotificationsPage />} />

@@ -8,6 +8,7 @@ import checklistRoutes, { templatesRouter } from './routes/checklist.routes.js'
 import { occurrenceRouter, scheduleRouter, templateRouter } from './routes/schedule.routes.js'
 import { forgotRouter, packingRouter, packingTemplatesRouter, placesRouter } from './routes/packing.routes.js'
 import { prepEventRouter, prepProfileRouter } from './routes/prep.routes.js'
+import { createExploreRouters } from './routes/explore.routes.js'
 import { analyticsRouter, weekRouter } from './routes/analytics.routes.js'
 import { createAssistantRouter } from './routes/assistant.routes.js'
 import notificationRoutes from './routes/notification.routes.js'
@@ -36,6 +37,11 @@ export function createApp(options = {}) {
   app.use('/api/events', forgotRouter)
   app.use('/api/events', prepEventRouter)
   app.use('/api/prep-profile', prepProfileRouter)
+  // Weather & Explore first: GET /api/places/nearby must not be read as a saved-place id by the router below.
+  const explore = createExploreRouters(options)
+  app.use('/api/weather', explore.weather)
+  app.use('/api/locations', explore.locations)
+  app.use('/api/places', explore.places)
   app.use('/api/places', placesRouter)
   app.use('/api/packing-templates', packingTemplatesRouter)
   app.use('/api/packing', packingRouter)

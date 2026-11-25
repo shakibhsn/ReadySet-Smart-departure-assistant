@@ -265,3 +265,9 @@ dialog[open]::backdrop { animation: rs-fade 200ms ease-out both; backdrop-filter
   }
   .card-hover:hover { transform: none; }
 }
+
+/* Weather & Explore map markers (Leaflet divIcons: plain CSS dots, no image assets). */
+.rs-pin { display: block; width: 18px; height: 18px; margin: 2px; border-radius: 9999px; border: 3px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 0.45); }
+.rs-pin-home { background: #30638e; }
+.rs-pin-place { background: #00798c; }
+.rs-pin-selected { background: #edae49; transform: scale(1.25); }

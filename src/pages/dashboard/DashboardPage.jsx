@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { CalendarDays, CalendarPlus, Compass } from 'lucide-react'
+import { CalendarDays, CalendarPlus, CloudSun, Compass } from 'lucide-react'
 import { format } from 'date-fns'
 import { ButtonLink } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -9,12 +9,14 @@ import { NextDepartureCard } from '@/components/dashboard/NextDepartureCard'
 import { ReadinessCard } from '@/components/dashboard/ReadinessCard'
 import { ChecklistPreview } from '@/components/dashboard/ChecklistPreview'
 import { WeatherCard } from '@/components/weather/WeatherCard'
+import { ConnectedWeatherCard } from '@/components/weather/LocationWeatherCard'
 import { ConflictsCard } from '@/components/events/ConflictsCard'
 import { QuickActionCard } from '@/components/dashboard/QuickActionCard'
 import { ScheduleList } from '@/components/events/ScheduleList'
 import { useChecklist } from '@/hooks/useChecklist'
 import { useAuth } from '@/hooks/useAuth'
 import { useEventQuery } from '@/hooks/useEventQuery'
+import { useWeatherLocation } from '@/hooks/useWeatherLocation'
 import { getUpcomingPlans } from '@/services/departureApi'
 import { getEvents, getOccurrences, getUpcomingEvents } from '@/services/eventApi'
 import { todayKey } from '@/utils/format'
@@ -28,6 +30,7 @@ function greeting(date = new Date()) {
 
 export default function DashboardPage() {
   const { user, justRegistered, dismissWelcome } = useAuth()
+  const { location: weatherLocation } = useWeatherLocation()
   const timezone = user.preference?.timezone ?? 'Asia/Dhaka'
   const today = todayKey(timezone)
 
@@ -84,10 +87,11 @@ export default function DashboardPage() {
             <NextDepartureCard plan={nextPlan} onRefresh={plans.reload} />
           </div>
 
-          <div className="anim-fade-up grid gap-4 sm:grid-cols-3" style={{ '--d': '70ms' }}>
+          <div className="anim-fade-up grid gap-4 sm:grid-cols-2 lg:grid-cols-4" style={{ '--d': '70ms' }}>
             <QuickActionCard to="/events/new" icon={CalendarPlus} title="Create event" description="Add something new" />
             <QuickActionCard to="/planner" icon={Compass} title="Plan departure" description="Work out when to leave" />
             <QuickActionCard to="/schedule" icon={CalendarDays} title="View schedule" description="See everything coming up" />
+            <QuickActionCard to="/explore" icon={CloudSun} title="Weather & Explore" description="Forecast and nearby places" />
           </div>
 
           <ConflictsCard compact />
@@ -140,6 +144,7 @@ export default function DashboardPage() {
 
             <div className="anim-fade-up space-y-6" style={{ '--d': '210ms' }}>
               <ReadinessCard eventTitle={nextEvent?.title} done={progress.done} total={progress.total} percent={progress.percent} />
+              <ConnectedWeatherCard location={weatherLocation} compact />
               {nextEvent && <WeatherCard event={nextEvent} />}
             </div>
           </div>
