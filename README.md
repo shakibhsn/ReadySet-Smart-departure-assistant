@@ -380,3 +380,16 @@ The interface follows a purple and lime design system (tokens, shell, shadcn/ui 
 **Still browser-side (not in the database yet):** the chosen weather location (per user, per browser), the temperature unit, the theme, and the offline copy of events and checklists.
 
 **Deploying.** Nothing is deployed by this repository. Serve over HTTPS, serve `index.html` for every route, serve `/sw.js` without a long cache lifetime, set `FRONTEND_URL` for CORS, and use your own Overpass server and a permitted tile service for real traffic.
+
+## 14. Screenshots
+Taken in a real browser against a production build with throwaway test accounts (no real data, no keys).
+
+| Feature | Screenshots |
+|---|---|
+| UI redesign (purple and lime) | [dashboard](docs/screenshots/redesign/dashboard-desktop.png) · [dark](docs/screenshots/redesign/dashboard-desktop-dark.png) · [mobile](docs/screenshots/redesign/dashboard-mobile.png) · [schedule](docs/screenshots/redesign/schedule-desktop.png) · [settings](docs/screenshots/redesign/settings-desktop.png) |
+| AI departure assistant | [desktop](docs/screenshots/redesign/assistant-desktop.png) · [mobile](docs/screenshots/redesign/assistant-mobile.png) · [answer](docs/screenshots/phase5/assistant-answer.png) |
+| Notifications | [mobile](docs/screenshots/phase5/notifications-mobile.png) |
+| Weekly planner and analytics | [week](docs/screenshots/phase5/week-desktop.png) · [tablet](docs/screenshots/phase5/week-tablet.png) · [mobile](docs/screenshots/phase5/week-mobile.png) · [dark](docs/screenshots/phase5/week-dark.png) · [analytics](docs/screenshots/phase5/analytics-desktop.png) |
+| PWA and offline | [offline checklist](docs/screenshots/phase5/offline-checklist.png) · [after reconnect](docs/screenshots/phase5/after-reconnect.png) · [sync conflict](docs/screenshots/phase5/offline-conflict.png) |
+| Weather and Explore | [search](docs/screenshots/weather-explore/02-search-results-desktop.png) · [explore](docs/screenshots/weather-explore/03-explore-desktop-light.png) · [dashboard weather](docs/screenshots/weather-explore/05-dashboard-with-location-desktop.png) · [mobile](docs/screenshots/weather-explore/explore-mobile.png) · [dark](docs/screenshots/weather-explore/explore-dark-desktop.png) |
+| Bangladesh map | [overview](docs/screenshots/bangladesh-map/01-overview-desktop.png) · [division](docs/screenshots/bangladesh-map/02-division-desktop.png) · [district](docs/screenshots/bangladesh-map/03-district-desktop.png) · [mobile](docs/screenshots/bangladesh-map/06-barishal-mobile.png) · [dark](docs/screenshots/bangladesh-map/07-overview-dark.png) |
