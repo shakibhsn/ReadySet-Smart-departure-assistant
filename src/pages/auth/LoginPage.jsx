@@ -69,7 +69,7 @@ export default function LoginPage() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} noValidate className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         {formError && <Alert>{formError}</Alert>}
         {needsVerification && (
           <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm">

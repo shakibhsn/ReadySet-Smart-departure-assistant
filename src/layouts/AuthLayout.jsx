@@ -52,8 +52,8 @@ function PlanPreview() {
 
 export default function AuthLayout({ title, subtitle, children, footer }) {
   return (
-    <div className="grid min-h-screen overflow-hidden bg-canvas lg:grid-cols-2">
-      <aside className="hero-scope relative hidden min-h-screen overflow-hidden bg-hero-gradient px-10 py-9 text-white lg:flex lg:flex-col lg:justify-between xl:px-16 xl:py-11">
+    <div className="grid min-h-dvh bg-canvas lg:grid-cols-2">
+      <aside className="hero-scope relative hidden min-h-screen overflow-hidden bg-hero-gradient px-10 py-6 text-white lg:flex lg:flex-col lg:justify-between xl:px-16 xl:py-7">
         <div aria-hidden="true" className="absolute -right-36 -top-32 size-[30rem] rounded-full border border-white/[0.08]" />
         <div aria-hidden="true" className="absolute -right-20 -top-16 size-[21rem] rounded-full border border-white/[0.08]" />
         <div aria-hidden="true" className="absolute -bottom-52 -left-40 size-[34rem] rounded-full bg-[radial-gradient(circle_at_center,rgba(37,160,179,0.32),transparent_68%)]" />
@@ -61,7 +61,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
 
         <Logo light className="relative z-10" />
 
-        <div className="relative z-10 mx-auto w-full max-w-lg py-12 xl:py-16">
+        <div className="relative z-10 mx-auto w-full max-w-lg py-5 xl:py-7">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-xs font-semibold text-brand-100">
             <span className="size-1.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(237,174,73,0.9)]" />
             A little more calm in every commute
@@ -92,13 +92,13 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
         <p className="relative z-10 text-xs text-brand-200/75">© {new Date().getFullYear()} ReadySet <span className="mx-1.5">·</span> Make time for what matters.</p>
       </aside>
 
-      <main className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-8 sm:py-12 lg:px-10 xl:px-16">
+      <main className="relative flex min-h-dvh items-center justify-center px-4 py-8 sm:px-8 sm:py-10 lg:px-10 xl:px-14">
         <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-brand-100/70 blur-3xl lg:hidden" />
-        <div className="relative w-full max-w-[460px]">
-          <Logo className="mb-8 lg:hidden" />
+        <div className="relative w-full max-w-[480px]">
+          <Logo className="mb-4 lg:hidden" />
 
-          <section className="anim-fade-up rounded-[28px] border border-line bg-surface p-6 shadow-lift sm:p-9">
-            <div className="mb-7">
+          <section className="anim-fade-up rounded-[30px] border border-line bg-surface p-6 shadow-[0_2px_4px_rgba(0,61,91,0.06),0_24px_48px_-12px_rgba(0,61,91,0.20)] sm:p-8">
+            <div className="mb-6">
               <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-brand-600">Your day, right on time</p>
               <h1 className="text-[1.8rem] font-extrabold leading-tight tracking-tight text-ink sm:text-3xl">{title}</h1>
               <p className="mt-2.5 text-sm leading-6 text-muted">{subtitle}</p>
@@ -107,7 +107,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
             {footer && <p className="mt-7 border-t border-line/80 pt-5 text-center text-sm text-muted">{footer}</p>}
           </section>
 
-          <p className="mt-5 flex items-center justify-center gap-2 text-xs font-medium text-muted">
+          <p className="mt-3 flex items-center justify-center gap-2 text-xs font-medium text-muted">
             <ShieldCheck aria-hidden="true" className="size-4 text-brand-500" />
             Your account and plans stay private.
           </p>

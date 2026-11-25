@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { NotificationPreferencesCard } from '@/components/settings/NotificationPreferencesCard'
 import { EmailNotificationsCard } from '@/components/settings/EmailNotificationsCard'
 import { EmailSecurityCard } from '@/components/settings/EmailSecurityCard'
-import { useAppState } from '@/hooks/useAppState'
+import { useTheme } from '@/hooks/useTheme'
 import { useAuth } from '@/hooks/useAuth'
 import { ApiError, fieldErrorsFrom } from '@/lib/apiClient'
 import { updatePreferencesRequest, updateProfileRequest } from '@/services/userApi'
@@ -40,18 +40,17 @@ function Section({ title, description, children }) {
 const isWholeNumber = (v) => v !== '' && Number.isInteger(Number(v))
 
 export default function SettingsPage() {
-  const { settings, updateSettings } = useAppState()
+  const { theme, setTheme } = useTheme()
   const { user, refreshUser } = useAuth()
   const pref = user.preference
 
-  // Profile + departure preferences are saved to the backend. Reminders and theme are still frontend-only.
+  // Profile + departure preferences are saved to the backend. Notification preferences live in NotificationPreferencesCard; theme is device-only.
   const [name, setName] = useState(user.name)
   const [prefs, setPrefs] = useState({
     defaultPreparationMinutes: String(pref?.defaultPreparationMinutes ?? 30),
     defaultArrivalBufferMinutes: String(pref?.defaultArrivalBufferMinutes ?? 10),
     preferredTravelMode: pref?.preferredTravelMode ?? 'manual',
   })
-  const [local, setLocal] = useState({ reminders: settings.reminders, theme: settings.theme })
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [saved, setSaved] = useState(false)
@@ -78,7 +77,6 @@ export default function SettingsPage() {
         preferredTravelMode: prefs.preferredTravelMode,
       })
       await refreshUser()
-      updateSettings(local)
       setSaved(true)
     } catch (err) {
       if (err instanceof ApiError) {
@@ -151,16 +149,16 @@ export default function SettingsPage() {
                   key={value}
                   className={cn(
                     'flex h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border text-xs font-semibold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand-500',
-                    local.theme === value ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-line text-muted hover:border-brand-200',
+                    theme === value ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-line text-muted hover:border-brand-200',
                   )}
                 >
-                  <input type="radio" name="theme" value={value} checked={local.theme === value} onChange={() => { setLocal({ ...local, theme: value }); touch() }} className="sr-only" />
+                  <input type="radio" name="theme" value={value} checked={theme === value} onChange={() => setTheme(value)} className="sr-only" />
                   <Icon className="size-5" />
                   {label}
                 </label>
               ))}
             </div>
-            <p className="mt-2 text-xs text-muted">Theme switching is a preview only. Dark mode ships in a later phase.</p>
+            <p className="mt-2 text-xs text-muted">Your appearance updates instantly and is saved on this device.</p>
           </fieldset>
           <div className="flex items-center gap-3 rounded-xl bg-canvas p-4">
             <Globe className="size-5 text-brand-600" />

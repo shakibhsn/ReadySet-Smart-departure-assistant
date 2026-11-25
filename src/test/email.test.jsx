@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import AppRoutes from '@/routes'
 import { AuthProvider } from '@/components/common/AuthProvider'
+import { ThemeProvider } from '@/components/common/ThemeProvider'
 import { getToken, setToken } from '@/lib/tokenStorage'
 
 const pref = { defaultPreparationMinutes: 30, defaultArrivalBufferMinutes: 10, preferredTravelMode: 'manual', timezone: 'Asia/Dhaka' }
@@ -35,11 +36,11 @@ function mockApi(routes = {}) {
 const renderAt = (path) =>
   render(
     <MemoryRouter initialEntries={[path]}>
-      <AuthProvider>
-        
+      <ThemeProvider>
+        <AuthProvider>
           <AppRoutes />
-        
-      </AuthProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   )
 const signedIn = (user) => {
